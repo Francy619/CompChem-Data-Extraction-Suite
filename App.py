@@ -156,7 +156,7 @@ if st.session_state.app_mode == "Home":
             st.session_state.app_mode = "QTAIM Analysis"
             st.rerun()
             
-  st.markdown("""
+  st.markdown(""
     <div class="footer-text">
         <strong>Developed by:</strong> Francis Thomas & Dr. Renjith Thomas <br>
         <strong>Research Group:</strong> Centre for Theoretical and Computational Chemistry (CTCC) <br>
