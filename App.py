@@ -67,12 +67,42 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. SIDEBAR NAVIGATION
+# 3. SIDEBAR NAVIGATION & BRANDING
 # ==========================================
+# --- Add Institutional Logos Side-by-Side ---
+# (Make sure to upload 'logo1.png' and 'logo2.png' to your GitHub repository)
+col1, col2 = st.sidebar.columns(2)
+
+with col1:
+    try:
+        st.image("logo1.png", use_container_width=True)
+    except Exception:
+        pass # Fails gracefully if logo1 is missing
+
+with col2:
+    try:
+        st.image("logo2.png", use_container_width=True)
+    except Exception:
+        pass # Fails gracefully if logo2 is missing
+
+st.sidebar.markdown("---")
+
+# --- Navigation ---
 st.sidebar.markdown("### Select Calculation Mode")
 app_mode = st.sidebar.radio("Choose Tool:", ["Interaction Energy Calculator", "NBO E(2) Analysis"])
 st.sidebar.markdown("---")
+
+# --- Instructions & Institutional Info ---
 st.sidebar.info("Upload Gaussian output files (.log or .out) to extract data and generate formatted Excel reports.")
+
+with st.sidebar.expander("ℹ️ About & Instructions"):
+    st.markdown("""
+    **Developed by:** Francis Thomas  
+    **Institution:** St. Dominic's College, Kanjirapally  
+    
+    * **Energy Calculator:** Ensure complex files contain standard HF outputs or Counterpoise corrected energies (if BSSE is selected).
+    * **NBO Analysis:** Files must contain the *Second Order Perturbation Theory Analysis* table.
+    """)
 
 # ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
