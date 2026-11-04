@@ -67,10 +67,10 @@ st.markdown("""
     /* Center Dashboard Menu */
    /* Center Dashboard Menu - Ultra Professional Font Styling */
     .menu-title { 
-        font-size: 4.8rem; font-weight: 900; color: #1E3A8A;text-align: center; 
-        margin-top: 40px; 
+        font-size: 4.8rem; font-weight: 600; color: #1E3A8A;text-align: center; 
+        margin-top: 20px; 
         margin-bottom: 40px; 
-        font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif; 
+        font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif; 
         line-height: 1.1; 
         letter-spacing: -2px; 
     }
