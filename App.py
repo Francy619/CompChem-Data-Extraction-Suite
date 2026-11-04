@@ -90,10 +90,10 @@ st.sidebar.markdown('<p class="sidebar-title">📊 Dashboard</p>', unsafe_allow_
 
 if 'app_mode' not in st.session_state: st.session_state.app_mode = "Interaction Energy"
 
-btn_ie = st.sidebar.button("🔬 Interaction Energy", use_container_width=True, type="primary" if st.session_state.app_mode == "Interaction Energy" else "secondary")
-btn_led = st.sidebar.button("📊 LED Analysis", use_container_width=True, type="primary" if st.session_state.app_mode == "LED Analysis" else "secondary")
-btn_nbo = st.sidebar.button("⚛️ NBO E(2) Analysis", use_container_width=True, type="primary" if st.session_state.app_mode == "NBO E(2) Analysis" else "secondary")
-btn_qtaim = st.sidebar.button("⭕ QTAIM Topology", use_container_width=True, type="primary" if st.session_state.app_mode == "QTAIM Analysis" else "secondary")
+btn_ie = st.sidebar.button("🔬 Interaction Energy Extractor", use_container_width=True, type="primary" if st.session_state.app_mode == "Interaction Energy" else "secondary")
+btn_led = st.sidebar.button("📊 LED Data Parser", use_container_width=True, type="primary" if st.session_state.app_mode == "LED Analysis" else "secondary")
+btn_nbo = st.sidebar.button("⚛️ NBO E(2) Extractor", use_container_width=True, type="primary" if st.session_state.app_mode == "NBO E(2) Analysis" else "secondary")
+btn_qtaim = st.sidebar.button("⭕ QTAIM Properties Tabulator ", use_container_width=True, type="primary" if st.session_state.app_mode == "QTAIM Analysis" else "secondary")
 
 if btn_ie: st.session_state.app_mode = "Interaction Energy"; st.rerun()
 if btn_led: st.session_state.app_mode = "LED Analysis"; st.rerun()
@@ -248,7 +248,7 @@ if app_mode == "Interaction Energy":
 # 5. APP MODE 2: LED ANALYSIS
 # ==========================================
 elif app_mode == "LED Analysis":
-    st.markdown('<div class="main-header-container"><div class="main-title">📊 Local Energy Decomposition (LED)</div><div class="sub-title">Parse Orca DLPNO-CCSD(T) output to decompose interaction energies.</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header-container"><div class="main-title">📊 Local Energy Decomposition (LED) Parser</div><div class="sub-title">Parse Orca DLPNO-CCSD(T) output to decompose interaction energies.</div></div>', unsafe_allow_html=True)
     
     num_led_systems = st.number_input("How many systems to evaluate?", min_value=1, max_value=10, value=1)
     
@@ -305,11 +305,11 @@ elif app_mode == "LED Analysis":
         if not st.session_state.calc_done_led:
             col_s1, col_btn, col_s2 = st.columns([1, 1, 1])
             with col_btn:
-                if st.button("Run LED Analysis", type="primary", use_container_width=True): do_led_calc = True
+                if st.button("Run LED Parser", type="primary", use_container_width=True): do_led_calc = True
         else:
             col_s1, col_calc, col_down, col_s2 = st.columns([2, 3, 3, 2])
             with col_calc:
-                if st.button("Run LED Analysis", type="primary", use_container_width=True): do_led_calc = True
+                if st.button("Run LED Parser", type="primary", use_container_width=True): do_led_calc = True
             with col_down:
                 st.download_button("Download LED Report (.xlsx)", data=st.session_state.excel_data_led, file_name="LED_Batch_Results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
@@ -471,7 +471,7 @@ elif app_mode == "LED Analysis":
 # 6. APP MODE 3: NBO E(2) ANALYSIS
 # ==========================================
 elif app_mode == "NBO E(2) Analysis":
-    st.markdown('<div class="main-header-container"><div class="main-title">⚛️ NBO E(2) Perturbation Analysis</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header-container"><div class="main-title">⚛️ NBO E(2) Extractor</div></div>', unsafe_allow_html=True)
     with st.container(border=True):
         col1, col2 = st.columns([1, 2])
         with col1: top_n = st.number_input("How many highest E(2) values needed per file?", min_value=1, max_value=50, value=1)
@@ -561,7 +561,7 @@ elif app_mode == "NBO E(2) Analysis":
 # 7. APP MODE 4: QTAIM ANALYSIS
 # ==========================================
 elif app_mode == "QTAIM Analysis":
-    st.markdown('<div class="main-header-container"><div class="main-title">⭕ QTAIM Topology Analysis</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header-container"><div class="main-title">⭕ QTAIM Properties Tabulator</div></div>', unsafe_allow_html=True)
     with st.container(border=True):
         num_qtaim_files = st.number_input("How many CPprop output files are you analyzing?", min_value=1, max_value=20, value=1)
     st.write("")
