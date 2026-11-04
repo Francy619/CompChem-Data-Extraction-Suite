@@ -16,42 +16,72 @@ def extract_energy(uploaded_file):
     matches = re.findall(r'HF=([-+]?\d*\.\d+|\d+)', stitched)
     return Decimal(matches[-1]) if matches else None
 
-st.set_page_config(page_title="Interaction Energy Calculator", layout="wide")
-st.title("🔬 Universal Interaction Energy Calculator")
-st.markdown("Calculate $\Delta E$ for any system. Adjust the **Quantity** to calculate complexes with multiple solvent molecules (e.g., 2 Waters, 3 Methanols).")
+st.set_page_config(page_title="Interaction Energy Calculator", layout="wide", initial_sidebar_state="collapsed")
+
+# --- CUSTOM CSS FOR PROFESSIONAL LOOK ---
+st.markdown("""
+<style>
+    /* Main Headers */
+    .main-title { font-size: 2.2rem; color: #1E3A8A; font-weight: 700; margin-bottom: 0px; font-family: 'Segoe UI', sans-serif; }
+    .sub-title { font-size: 1.1rem; color: #4B5563; margin-bottom: 25px; font-family: 'Segoe UI', sans-serif; }
+    .section-header { font-size: 1.25rem; color: #0F172A; font-weight: 600; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px; margin-top: 30px; margin-bottom: 15px; }
+    
+    /* Clean up file uploaders */
+    div[data-testid="stFileUploader"] {
+        background-color: #F8FAFC;
+        border: 1px dashed #CBD5E1;
+        border-radius: 6px;
+        padding: 10px;
+    }
+    
+    /* Button Styling */
+    div.stButton > button:first-child {
+        border-radius: 6px;
+        font-weight: 600;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<p class="main-title">Interaction Energy Calculator</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Automated extraction and computation of ΔE from Gaussian log files.</p>', unsafe_allow_html=True)
+
+with st.expander("View Quick Guide"):
+    st.markdown("""
+    **Workflow Instructions:**
+    1. **Primary System:** Upload your central monomer (e.g., Amino Acid).
+    2. **Secondary Systems:** Specify how many different solvents or ligands you are testing.
+    3. **Upload & Map:** For each secondary system, upload the pure Monomer 2 file, set its stoichiometric quantity ($n$), and upload the associated complex files.
+    4. **Calculate:** The tool applies the formula: $\Delta E = E_{\text{Complex}} - (E_{\text{Monomer1}} + n \\times E_{\text{Monomer2}})$.
+    """)
 
 # --- UI: COMMON MONOMER ---
-st.markdown("### 1. Main System (Common to all calculations)")
-m1_file = st.file_uploader("Upload Monomer 1 (e.g., Main Amino Acid, Catalyst, etc.)", type=["log", "out"])
-
-st.markdown("---")
+st.markdown('<p class="section-header">1. Primary Reference System</p>', unsafe_allow_html=True)
+m1_file = st.file_uploader("Upload Monomer 1 (e.g., Amino Acid)", type=["log", "out"])
 
 # --- UI: DYNAMIC GROUPS WITH MULTIPLIERS ---
-st.markdown("### 2. Secondary Systems (Solvents, Ligands, Bases, etc.)")
-num_systems = st.number_input("How many different secondary systems are you calculating against?", min_value=1, max_value=20, value=1)
+st.markdown('<p class="section-header">2. Secondary Systems (Solvents, Ligands, Bases)</p>', unsafe_allow_html=True)
+num_systems = st.number_input("Number of secondary systems to evaluate:", min_value=1, max_value=20, value=1)
 
 systems_data = []
 
 for i in range(num_systems):
     with st.container():
-        st.markdown(f"#### System Type {i+1}")
+        st.markdown(f"**System Group {i+1}**")
         col1, col2, col3 = st.columns([2, 1, 3])
         
         with col1:
             m2 = st.file_uploader(f"Upload Monomer 2", type=["log", "out"], key=f"m2_{i}")
         with col2:
-            n_m2 = st.number_input(f"Quantity (n)", min_value=1, max_value=50, value=1, key=f"qty_{i}", 
-                                   help="How many of this monomer are in the complex? The energy will be multiplied by this number.")
+            n_m2 = st.number_input(f"Quantity (n)", min_value=1, max_value=50, value=1, key=f"qty_{i}")
         with col3:
-            comps = st.file_uploader(f"Upload all Complexes formed with Monomer 2", type=["log", "out"], accept_multiple_files=True, key=f"comps_{i}")
+            comps = st.file_uploader(f"Upload corresponding Complexes", type=["log", "out"], accept_multiple_files=True, key=f"comps_{i}")
             
         systems_data.append({"m2": m2, "multiplier": Decimal(n_m2), "complexes": comps})
-        st.write("") # Spacer
+        st.write("") 
 
-st.markdown("---")
+st.divider()
 
 # --- INITIALIZE SESSION STATE ---
-# This prevents the app from resetting when the download button is clicked
 if 'calc_done' not in st.session_state:
     st.session_state.calc_done = False
     st.session_state.results = []
@@ -59,22 +89,21 @@ if 'calc_done' not in st.session_state:
     st.session_state.download_name = ""
 
 # --- BUTTON LAYOUT (CENTERED) ---
-# We use empty spacer columns on the left and right to push the buttons to the center
 col_spacer1, col_calc, col_down, col_spacer2 = st.columns([2, 3, 3, 2])
 
 with col_calc:
-    calc_btn = st.button("Calculate Interaction Energies", type="primary")
+    calc_btn = st.button("Calculate Energies", type="primary", use_container_width=True)
 
 # --- EXECUTE CALCULATIONS ---
 if calc_btn:
     if not m1_file:
-        st.error("⚠️ Please upload Monomer 1.")
+        st.error("Please upload Monomer 1 to proceed.")
         st.session_state.calc_done = False
     else:
-        with st.spinner("Extracting energies and generating tabulations..."):
+        with st.spinner("Processing Gaussian outputs..."):
             e_m1 = extract_energy(m1_file)
             if e_m1 is None:
-                st.error("Could not extract energy from Monomer 1.")
+                st.error("Failed to extract HF energy from Monomer 1.")
                 st.stop()
                 
             results = []
@@ -90,7 +119,7 @@ if calc_btn:
                     
                 e_m2_single = extract_energy(m2_file)
                 if e_m2_single is None:
-                    st.warning(f"Could not extract energy from {m2_file.name}. Skipping this group.")
+                    st.warning(f"Failed to extract HF energy from {m2_file.name}. Skipping.")
                     continue
                 
                 e_m2_total = e_m2_single * n_m2
@@ -105,11 +134,11 @@ if calc_btn:
                         group_results.append({
                             "Complex File": d_file.name,
                             "E Complex (a.u.)": e_dimer,
-                            "Amino Acid File": m1_file.name,
-                            "E Amino Acid (a.u.)": e_m1,
-                            "Solvent File": m2_file.name,
+                            "Monomer 1 File": m1_file.name,
+                            "E Monomer 1 (a.u.)": e_m1,
+                            "Monomer 2 File": m2_file.name,
                             "Qty": int(n_m2),
-                            "E Solvent (single a.u.)": e_m2_single,
+                            "E Monomer 2 (single a.u.)": e_m2_single,
                             "ΔE (a.u.)": delta_au,
                             "ΔE (kcal/mol)": delta_kcal
                         })
@@ -124,7 +153,7 @@ if calc_btn:
                         is_first_in_sheet = False
 
             if not results:
-                st.error("No valid calculations could be completed. Please ensure you uploaded matching complex files for your secondary monomers.")
+                st.error("Calculations aborted. No valid interaction energies could be extracted.")
                 st.session_state.calc_done = False
                 st.stop()
 
@@ -152,8 +181,8 @@ if calc_btn:
             worksheet.set_column('A:B', 22)
             worksheet.set_column('C:D', 22)
             worksheet.set_column('E:E', 20)
-            worksheet.set_column('F:F', 8)  # Qty column
-            worksheet.set_column('G:G', 25) # E Monomer 2 column
+            worksheet.set_column('F:F', 8)  
+            worksheet.set_column('G:G', 25) 
             worksheet.set_column('H:I', 18)
             
             for row_num, row_data in enumerate(results, start=1):
@@ -163,16 +192,16 @@ if calc_btn:
                 worksheet.write_number(row_num, 1, float(row_data["E Complex (a.u.)"]), center_format)
                 
                 if row_data["Is_First_In_Sheet"]:
-                    worksheet.write(row_num, 2, row_data["Amino Acid File"], left_format)
-                    worksheet.write_number(row_num, 3, float(row_data["E Amino Acid (a.u.)"]), center_format)
+                    worksheet.write(row_num, 2, row_data["Monomer 1 File"], left_format)
+                    worksheet.write_number(row_num, 3, float(row_data["E Monomer 1 (a.u.)"]), center_format)
                 else:
                     worksheet.write(row_num, 2, "", left_format)
                     worksheet.write(row_num, 3, "", center_format)
                     
                 if row_data["Is_First_In_Group"]:
-                    worksheet.write(row_num, 4, row_data["Solvent File"], left_format)
+                    worksheet.write(row_num, 4, row_data["Monomer 2 File"], left_format)
                     worksheet.write_number(row_num, 5, row_data["Qty"], center_format)
-                    worksheet.write_number(row_num, 6, float(row_data["E Solvent (single a.u.)"]), center_format)
+                    worksheet.write_number(row_num, 6, float(row_data["E Monomer 2 (single a.u.)"]), center_format)
                 else:
                     worksheet.write(row_num, 4, "", left_format)
                     worksheet.write(row_num, 5, "", center_format)
@@ -185,7 +214,6 @@ if calc_btn:
                         
             workbook.close()
             
-            # --- SAVE TO SESSION STATE ---
             st.session_state.results = results
             st.session_state.excel_data = output.getvalue()
             
@@ -193,22 +221,21 @@ if calc_btn:
             st.session_state.download_name = f"{base_name}_Universal_Energies.xlsx"
             st.session_state.calc_done = True
 
-# --- SHOW TABLE AND DOWNLOAD BUTTON AFTER CALCULATION ---
+# --- SHOW TABLE AND DOWNLOAD BUTTON ---
 if st.session_state.calc_done:
-    # 1. Place Download button next to Calculate button in the centered columns layout
     with col_down:
         st.download_button(
-            label="📥 Download Excel File",
+            label="Download Data (.xlsx)",
             data=st.session_state.excel_data,
             file_name=st.session_state.download_name,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="secondary"
+            type="secondary",
+            use_container_width=True
         )
     
-    st.write("") # Spacer
-    st.markdown("### 📊 Data Tabulation")
+    st.write("") 
+    st.markdown('<p class="section-header">Tabulated Results</p>', unsafe_allow_html=True)
     
-    # 2. Render Data Table directly below
     display_df = pd.DataFrame(st.session_state.results).drop(columns=["Is_Best", "Is_First_In_Sheet", "Is_First_In_Group"])
     for col in display_df.columns:
         if "E " in col or "ΔE" in col:
@@ -217,7 +244,7 @@ if st.session_state.calc_done:
     def highlight_best(row):
         idx = row.name
         if st.session_state.results[idx]["Is_Best"]:
-            return ['background-color: #FFFF00; color: black'] * len(row)
+            return ['background-color: #FEF08A; color: #1F2937; font-weight: bold'] * len(row)
         return [''] * len(row)
     
     styled_df = display_df.style.apply(highlight_best, axis=1).format(precision=6)
