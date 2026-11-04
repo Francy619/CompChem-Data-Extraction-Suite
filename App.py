@@ -18,32 +18,66 @@ def extract_energy(uploaded_file):
 
 st.set_page_config(page_title="Interaction Energy Calculator", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CUSTOM CSS FOR PROFESSIONAL LOOK ---
+# --- CUSTOM CSS FOR PROFESSIONAL LOOK & BUTTONS ---
 st.markdown("""
 <style>
-    /* Main Headers */
-    .main-title { font-size: 2.2rem; color: #1E3A8A; font-weight: 700; margin-bottom: 0px; font-family: 'Segoe UI', sans-serif; }
-    .sub-title { font-size: 1.1rem; color: #4B5563; margin-bottom: 25px; font-family: 'Segoe UI', sans-serif; }
-    .section-header { font-size: 1.25rem; color: #0F172A; font-weight: 600; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px; margin-top: 30px; margin-bottom: 15px; }
-    
-    /* Clean up file uploaders */
-    div[data-testid="stFileUploader"] {
-        background-color: #F8FAFC;
-        border: 1px dashed #CBD5E1;
-        border-radius: 6px;
-        padding: 10px;
+    /* Centered Main Title */
+    .main-header-container {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #E2E8F0;
+    }
+    .main-title {
+        font-size: 3.2rem;
+        color: #1E3A8A;
+        font-weight: 800;
+        margin-bottom: 5px;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    .sub-title {
+        font-size: 1.1rem;
+        color: #4B5563;
+        font-family: 'Segoe UI', sans-serif;
     }
     
-    /* Button Styling */
-    div.stButton > button:first-child {
-        border-radius: 6px;
-        font-weight: 600;
+    /* Section Headers inside frames */
+    .section-header { 
+        font-size: 1.1rem; 
+        color: #1E3A8A; 
+        font-weight: 700; 
+        margin-bottom: 10px; 
+    }
+    
+    /* Custom Button Styling (Blue with Hover) */
+    div.stButton > button, div.stDownloadButton > button {
+        background-color: #1E3A8A !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        padding: 10px 24px !important;
+        transition: all 0.3s ease-in-out !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    /* Hover Effect for Buttons */
+    div.stButton > button:hover, div.stDownloadButton > button:hover {
+        background-color: #2563EB !important; /* Lighter vivid blue on hover */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+        color: #FFFFFF !important;
+        transform: translateY(-1px);
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<p class="main-title">Interaction Energy Calculator</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-title">Automated extraction and computation of ΔE from Gaussian log files.</p>', unsafe_allow_html=True)
+# --- HEADER SECTION ---
+st.markdown("""
+<div class="main-header-container">
+    <div class="main-title">🔬 Interaction Energy Calculator</div>
+    <div class="sub-title">Automated extraction and computation of ΔE from Gaussian log files.</div>
+</div>
+""", unsafe_allow_html=True)
 
 with st.expander("View Quick Guide"):
     st.markdown("""
@@ -54,19 +88,26 @@ with st.expander("View Quick Guide"):
     4. **Calculate:** The tool applies the formula: $\Delta E = E_{\text{Complex}} - (E_{\text{Monomer1}} + n \\times E_{\text{Monomer2}})$.
     """)
 
-# --- UI: COMMON MONOMER ---
-st.markdown('<p class="section-header">1. Primary Reference System</p>', unsafe_allow_html=True)
-m1_file = st.file_uploader("Upload Monomer 1 (e.g., Amino Acid)", type=["log", "out"])
+# --- TOP ROW: FRAMED CONFIGURATION ---
+col_left, col_right = st.columns(2)
 
-# --- UI: DYNAMIC GROUPS WITH MULTIPLIERS ---
-st.markdown('<p class="section-header">2. Secondary Systems (Solvents, Ligands, Bases)</p>', unsafe_allow_html=True)
-num_systems = st.number_input("Number of secondary systems to evaluate:", min_value=1, max_value=20, value=1)
+with col_left:
+    with st.container(border=True):
+        st.markdown('<p class="section-header">1. Primary Reference System</p>', unsafe_allow_html=True)
+        m1_file = st.file_uploader("Upload Monomer 1 (e.g., Amino Acid)", type=["log", "out"])
 
+with col_right:
+    with st.container(border=True):
+        st.markdown('<p class="section-header">2. Secondary Systems (Solvents, Ligands, Bases)</p>', unsafe_allow_html=True)
+        num_systems = st.number_input("Number of secondary systems to evaluate:", min_value=1, max_value=20, value=1)
+
+# --- DYNAMIC GROUPS WITH MULTIPLIERS (Also Framed) ---
+st.write("") # Spacer
 systems_data = []
 
 for i in range(num_systems):
-    with st.container():
-        st.markdown(f"**System Group {i+1}**")
+    with st.container(border=True):
+        st.markdown(f"**Secondary System Group {i+1}**")
         col1, col2, col3 = st.columns([2, 1, 3])
         
         with col1:
@@ -77,7 +118,6 @@ for i in range(num_systems):
             comps = st.file_uploader(f"Upload corresponding Complexes", type=["log", "out"], accept_multiple_files=True, key=f"comps_{i}")
             
         systems_data.append({"m2": m2, "multiplier": Decimal(n_m2), "complexes": comps})
-        st.write("") 
 
 st.divider()
 
@@ -92,7 +132,7 @@ if 'calc_done' not in st.session_state:
 col_spacer1, col_calc, col_down, col_spacer2 = st.columns([2, 3, 3, 2])
 
 with col_calc:
-    calc_btn = st.button("Calculate Energies", type="primary", use_container_width=True)
+    calc_btn = st.button("Calculate Energies", use_container_width=True)
 
 # --- EXECUTE CALCULATIONS ---
 if calc_btn:
@@ -229,12 +269,11 @@ if st.session_state.calc_done:
             data=st.session_state.excel_data,
             file_name=st.session_state.download_name,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="secondary",
             use_container_width=True
         )
     
     st.write("") 
-    st.markdown('<p class="section-header">Tabulated Results</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header" style="text-align: center; border: none; margin-top: 20px;">Tabulated Results</p>', unsafe_allow_html=True)
     
     display_df = pd.DataFrame(st.session_state.results).drop(columns=["Is_Best", "Is_First_In_Sheet", "Is_First_In_Group"])
     for col in display_df.columns:
