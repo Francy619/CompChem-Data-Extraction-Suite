@@ -133,7 +133,7 @@ if st.session_state.app_mode == "Home":
     </style>
     """, unsafe_allow_html=True)
         
-    st.markdown('<p class="menu-title">CompChem Data<br>Extraction Suite</p>', unsafe_allow_html=True)
+    st.markdown('<p class="menu-title">CompChem Data Extraction Suite</p>', unsafe_allow_html=True)
     st.write("")
     
     # Centered 2x2 Grid for Buttons
