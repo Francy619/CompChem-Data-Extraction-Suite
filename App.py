@@ -50,7 +50,7 @@ def extract_led_values(uploaded_file, target_strings):
     return extracted
 
 # ==========================================
-# 2. PAGE CONFIG & CSS
+# 2. PAGE CONFIG & CSS (Global)
 # ==========================================
 st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
@@ -64,25 +64,14 @@ st.markdown("""
     .sub-title { font-size: 1.1rem; color: #4B5563; font-family: 'Segoe UI', sans-serif; }
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
     
-    /* Center Dashboard Menu - Ultra Professional Font Styling */
-    .menu-title { 
-        font-size: 4.8rem; font-weight: 600; color: #1E3A8A; text-align: center; 
-        margin-top: 20px; 
-        margin-bottom: 40px; 
-        font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif; 
-        line-height: 1.1; 
-        letter-spacing: 2px; 
-    }
-    .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
-    
-    /* Action Buttons (Primary) */
+    /* Global Action Buttons (Primary) - NORMAL SIZE */
     button[kind="primary"] { 
         background-color: #1E3A8A !important; 
         color: #FFFFFF !important; 
         border: none !important; 
-        border-radius: 8px !important; 
+        border-radius: 6px !important; 
         font-weight: 700 !important; 
-        padding: 14px 24px !important; 
+        padding: 8px 16px !important; 
         transition: all 0.3s ease-in-out !important; 
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; 
     }
@@ -91,35 +80,15 @@ st.markdown("""
         transform: translateY(-2px); 
     }
     
-    /* Grid Home Buttons (Secondary) - Blue Box styling */
-    button[kind="secondary"] { 
-        background-color: #1E3A8A !important; 
-        color: #FFFFFF !important; 
-        border: none !important; 
-        border-radius: 12px !important; 
-        font-weight: 800 !important; 
-        font-size: 1.4rem !important; 
-        min-height: 140px !important;
-        padding: 30px 20px !important; 
-        transition: all 0.3s ease-in-out !important; 
-        box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important;
+    /* Global Secondary Buttons (Upload, Back to Home) - NORMAL SIZE */
+    button[kind="secondary"] {
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease-in-out !important;
     }
-    button[kind="secondary"]:hover { 
-        background-color: #2563EB !important; /* Lighter bright blue */
-        color: #FFFFFF !important; 
-        transform: translateY(-6px);
-        box-shadow: 0 12px 20px rgba(37, 99, 235, 0.3) !important;
-    }
-    
-    /* Home Button Specific Override for Internal Pages */
-    .home-btn-container button {
-        min-height: auto !important;
-        font-size: 1rem !important;
-        padding: 10px 20px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-    }
-    .home-btn-container button:hover {
-        transform: translateY(-2px);
+    button[kind="secondary"]:hover {
+        border-color: #1E3A8A !important;
+        color: #1E3A8A !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -131,8 +100,40 @@ if 'app_mode' not in st.session_state: st.session_state.app_mode = "Home"
 # 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
 if st.session_state.app_mode == "Home":
+    
+    # Inject MASSIVE button CSS *only* for the Home Page
+    st.markdown("""
+    <style>
+        .menu-title { 
+            font-size: 4.8rem; font-weight: 600; color: #1E3A8A; text-align: center; 
+            margin-top: 20px; margin-bottom: 40px; 
+            font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif; 
+            line-height: 1.1; letter-spacing: 2px; 
+        }
+        .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
         
-    st.markdown('<p class="menu-title">CompChem Data Extraction Suite</p>', unsafe_allow_html=True)
+        /* Override secondary buttons ONLY on this page to make them giant blue blocks */
+        button[kind="secondary"] { 
+            background-color: #1E3A8A !important; 
+            color: #FFFFFF !important; 
+            border: none !important; 
+            border-radius: 12px !important; 
+            font-weight: 800 !important; 
+            font-size: 1.4rem !important; 
+            min-height: 140px !important;
+            padding: 30px 20px !important; 
+            box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important;
+        }
+        button[kind="secondary"]:hover { 
+            background-color: #2563EB !important; 
+            color: #FFFFFF !important; 
+            transform: translateY(-6px) !important;
+            box-shadow: 0 12px 20px rgba(37, 99, 235, 0.3) !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+        
+    st.markdown('<p class="menu-title">CompChem Data<br>Extraction Suite</p>', unsafe_allow_html=True)
     st.write("")
     
     # Centered 2x2 Grid for Buttons
@@ -165,7 +166,6 @@ if st.session_state.app_mode == "Home":
         Automated tools for parsing outputs from Gaussian, ORCA, and Multiwfn.
     </div>
     """, unsafe_allow_html=True)
-
 # ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
 # ==========================================
