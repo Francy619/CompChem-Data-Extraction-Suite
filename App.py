@@ -65,23 +65,39 @@ st.markdown("""
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
     
     /* Center Dashboard Menu */
-    .menu-title { font-size: 2.5rem; font-weight: 800; color: #1E3A8A; text-align: center; margin-bottom: 30px; font-family: 'Segoe UI', sans-serif; }
-    .footer-text { text-align: center; color: #64748B; font-size: 0.9rem; margin-top: 50px; border-top: 1px solid #E2E8F0; padding-top: 20px;}
+    .menu-title { font-size: 4.2rem; font-weight: 900; color: #1E3A8A; text-align: center; margin-top: 60px; margin-bottom: 60px; font-family: 'Segoe UI', sans-serif; line-height: 1.2; }
+    .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
     
-    /* Navigation Buttons */
-    div[data-testid="stVerticalBlock"] > div > div > button.st-emotion-cache-121i060 { /* Default secondary button override */
-        height: 80px; 
-        font-size: 1.2rem !important; 
-        border-radius: 12px !important; 
-    }
-    
+    /* Action Buttons (Primary) */
     button[kind="primary"] { background-color: #1E3A8A !important; color: #FFFFFF !important; border: none !important; border-radius: 8px !important; font-weight: 700 !important; padding: 14px 24px !important; transition: all 0.3s ease-in-out !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; }
     button[kind="primary"]:hover { background-color: #2563EB !important; transform: translateY(-2px); }
-    button[kind="secondary"] { background-color: #F8FAFC !important; color: #475569 !important; border: 1px solid #CBD5E1 !important; border-radius: 8px !important; font-weight: 700 !important; padding: 14px 24px !important; transition: all 0.3s ease-in-out !important; }
-    button[kind="secondary"]:hover { background-color: #E2E8F0 !important; color: #1E293B !important; border-color: #94A3B8 !important; }
     
-    /* Home Button Specific */
-    .home-btn-container { margin-bottom: 20px; }
+    /* Grid Home Buttons (Secondary) */
+    button[kind="secondary"] { 
+        background-color: #F8FAFC !important; 
+        color: #1E3A8A !important; 
+        border: 2px solid #CBD5E1 !important; 
+        border-radius: 12px !important; 
+        font-weight: 800 !important; 
+        font-size: 1.4rem !important; 
+        min-height: 140px !important;
+        padding: 30px 20px !important; 
+        transition: all 0.3s ease-in-out !important; 
+    }
+    button[kind="secondary"]:hover { 
+        background-color: #F1F5F9 !important; 
+        color: #0F172A !important; 
+        border-color: #1E3A8A !important; 
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    /* Home Button Specific Override for Internal Pages */
+    .home-btn-container button {
+        min-height: auto !important;
+        font-size: 1rem !important;
+        padding: 10px 20px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -92,34 +108,28 @@ if 'app_mode' not in st.session_state: st.session_state.app_mode = "Home"
 # 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
 if st.session_state.app_mode == "Home":
-    # Logos at top
-    col_l1, col_l2, col_l3, col_l4, col_l5, col_l6 = st.columns([2, 1, 1, 1, 1, 2])
-    with col_l3:
-        try: st.image("logo1.png", width=80)
-        except Exception: pass
-    with col_l4:
-        try: st.image("logo2.png", width=80)
-        except Exception: pass
         
-    st.markdown('<p class="menu-title">CompChem Data Extraction Suite</p>', unsafe_allow_html=True)
+    st.markdown('<p class="menu-title">CompChem Data<br>Extraction Suite</p>', unsafe_allow_html=True)
     st.write("")
     
-    # Centered Menu Buttons
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        if st.button("🔬 Interaction Energy Extractor", use_container_width=True): 
+    # Centered 2x2 Grid for Buttons
+    c_space_l, c_btn_1, c_btn_2, c_space_r = st.columns([1, 3, 3, 1])
+    
+    with c_btn_1:
+        if st.button("🔬 Interaction Energy Extractor", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "Interaction Energy"
             st.rerun()
         st.write("")
-        if st.button("📊 Local Energy Decomposition (LED) Parser", use_container_width=True): 
+        if st.button("⚛️ NBO E(2) Extractor", use_container_width=True, type="secondary"): 
+            st.session_state.app_mode = "NBO E(2) Analysis"
+            st.rerun()
+            
+    with c_btn_2:
+        if st.button("📊 LED Data Parser", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "LED Analysis"
             st.rerun()
         st.write("")
-        if st.button("⚛️ NBO E(2) Extractor", use_container_width=True): 
-            st.session_state.app_mode = "NBO E(2) Analysis"
-            st.rerun()
-        st.write("")
-        if st.button("⭕ QTAIM Properties Tabulator", use_container_width=True): 
+        if st.button("⭕ QTAIM Properties Tabulator", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "QTAIM Analysis"
             st.rerun()
             
@@ -136,12 +146,14 @@ if st.session_state.app_mode == "Home":
 # 4. APP MODE 1: INTERACTION ENERGY
 # ==========================================
 elif st.session_state.app_mode == "Interaction Energy":
+    st.markdown('<div class="home-btn-container">', unsafe_allow_html=True)
     col_home, _ = st.columns([1, 6])
     with col_home:
-        if st.button("🏠 Back to Home", type="secondary"): 
+        if st.button("🏠 Back to Home", type="secondary", key="home_ie"): 
             st.session_state.app_mode = "Home"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="main-header-container"><div class="main-title">🔬 Interaction Energy Calculator</div><div class="sub-title">Automated extraction and computation of ΔE from Gaussian log files.</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header-container"><div class="main-title">🔬 Interaction Energy Extractor</div><div class="sub-title">Automated extraction and computation of ΔE from Gaussian log files.</div></div>', unsafe_allow_html=True)
 
     col_left, col_right = st.columns(2)
     with col_left:
@@ -280,10 +292,12 @@ elif st.session_state.app_mode == "Interaction Energy":
 # 5. APP MODE 2: LED ANALYSIS
 # ==========================================
 elif st.session_state.app_mode == "LED Analysis":
+    st.markdown('<div class="home-btn-container">', unsafe_allow_html=True)
     col_home, _ = st.columns([1, 6])
     with col_home:
-        if st.button("🏠 Back to Home", type="secondary"): 
+        if st.button("🏠 Back to Home", type="secondary", key="home_led"): 
             st.session_state.app_mode = "Home"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
             
     st.markdown('<div class="main-header-container"><div class="main-title">📊 Local Energy Decomposition (LED) Parser</div><div class="sub-title">Parse Orca DLPNO-CCSD(T) output to decompose interaction energies.</div></div>', unsafe_allow_html=True)
     
@@ -440,6 +454,7 @@ elif st.session_state.app_mode == "LED Analysis":
             center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             
+            # RAW VALUES TAB
             ws_values = workbook.add_worksheet('Extracted Values')
             all_val_keys = set()
             for data in unique_extracted_data.values(): all_val_keys.update(data.keys())
@@ -456,6 +471,7 @@ elif st.session_state.app_mode == "LED Analysis":
                     if isinstance(val, Decimal): ws_values.write_number(row_num, col_num, float(val), cell_fmt)
                     else: ws_values.write(row_num, col_num, str(val), cell_fmt)
 
+            # CALCULATIONS TAB
             ws_calcs = workbook.add_worksheet('Tabulated Data (kcal per mol)')
             calc_columns = list(all_calculations[0].keys())
             sup = workbook.add_format({'bold': True, 'font_script': 1, 'font_name': 'Times New Roman', 'font_size': 12})
@@ -502,11 +518,13 @@ elif st.session_state.app_mode == "LED Analysis":
 # 6. APP MODE 3: NBO E(2) EXTRACTOR
 # ==========================================
 elif st.session_state.app_mode == "NBO E(2) Analysis":
+    st.markdown('<div class="home-btn-container">', unsafe_allow_html=True)
     col_home, _ = st.columns([1, 6])
     with col_home:
-        if st.button("🏠 Back to Home", type="secondary"): 
+        if st.button("🏠 Back to Home", type="secondary", key="home_nbo"): 
             st.session_state.app_mode = "Home"; st.rerun()
-            
+    st.markdown('</div>', unsafe_allow_html=True)
+    
     st.markdown('<div class="main-header-container"><div class="main-title">⚛️ NBO E(2) Extractor</div><div class="sub-title">Parse and tabulate Natural Bond Orbital donor-acceptor interactions from log files.</div></div>', unsafe_allow_html=True)
     with st.container(border=True):
         col1, col2 = st.columns([1, 2])
@@ -597,11 +615,13 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
 # 7. APP MODE 4: QTAIM PROPERTIES TABULATOR
 # ==========================================
 elif st.session_state.app_mode == "QTAIM Analysis":
+    st.markdown('<div class="home-btn-container">', unsafe_allow_html=True)
     col_home, _ = st.columns([1, 6])
     with col_home:
-        if st.button("🏠 Back to Home", type="secondary"): 
+        if st.button("🏠 Back to Home", type="secondary", key="home_qtaim"): 
             st.session_state.app_mode = "Home"; st.rerun()
-            
+    st.markdown('</div>', unsafe_allow_html=True)
+    
     st.markdown('<div class="main-header-container"><div class="main-title">⭕ QTAIM Properties Tabulator</div><div class="sub-title">Parse Multiwfn CPprop.txt files to extract density properties at Bond Critical Points.</div></div>', unsafe_allow_html=True)
     with st.container(border=True):
         num_qtaim_files = st.number_input("How many CPprop output files are you analyzing?", min_value=1, max_value=20, value=1)
