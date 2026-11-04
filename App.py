@@ -127,45 +127,15 @@ st.markdown("""
 # Initialize Session State
 if 'app_mode' not in st.session_state: st.session_state.app_mode = "Home"
 
-# ==========================================
-# 3. HOME DASHBOARD (FULL SCREEN)
-# ==========================================
-if st.session_state.app_mode == "Home":
-        
-    st.markdown('<p class="menu-title">CompChem Data Extraction Suite</p>', unsafe_allow_html=True)
-    st.write("")
-    
-    # Centered 2x2 Grid for Buttons
-    c_space_l, c_btn_1, c_btn_2, c_space_r = st.columns([1, 3, 3, 1])
-    
-    with c_btn_1:
-        if st.button("🔬 Interaction Energy Extractor", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "Interaction Energy"
-            st.rerun()
-        st.write("")
-        if st.button("⚛️ NBO E(2) Extractor", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "NBO E(2) Analysis"
-            st.rerun()
-            
-    with c_btn_2:
-        if st.button("📊 LED Data Parser", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "LED Analysis"
-            st.rerun()
-        st.write("")
-        if st.button("⭕ QTAIM Properties Tabulator", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "QTAIM Analysis"
-            st.rerun()
-            
-    st.markdown("""
+st.markdown("""
     <div class="footer-text">
-        <strong>Developed by:</strong> Francis Thomas <br>
-        <strong>Institution:</strong> St. Dominic's College, Kanjirapally <br>
+        <strong>Developed by:</strong> Francis Thomas & Dr. Renjith Thomas <br>
+        <strong>Research Group:</strong> Centre for Theoretical and Computational Chemistry (CTCC) <br>
+        <strong>Institutions:</strong> St. Dominic's College, Kanjirapally & St. Berchmans College <br>
         <br>
         Automated tools for parsing outputs from Gaussian, ORCA, and Multiwfn.
     </div>
-    """, unsafe_allow_html=True)
-
-# ==========================================
+    """, unsafe_allow_html=True)# ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
 # ==========================================
 elif st.session_state.app_mode == "Interaction Energy":
