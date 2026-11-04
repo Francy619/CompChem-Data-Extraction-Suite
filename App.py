@@ -55,13 +55,7 @@ st.markdown("""
 # ==========================================
 # 3. SIDEBAR NAVIGATION
 # ==========================================
-col1, col2 = st.sidebar.columns(2)
-with col1:
-    try: st.image("logo1.png", use_container_width=True)
-    except Exception: pass
-with col2:
-    try: st.image("logo2.png", width=60)
-    except Exception: pass
+
 
 st.sidebar.markdown("---")
 st.sidebar.markdown('<p class="sidebar-title">📊 Dashboard</p>', unsafe_allow_html=True)
