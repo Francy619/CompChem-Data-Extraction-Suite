@@ -60,7 +60,7 @@ with col1:
     try: st.image("logo1.png", use_container_width=True)
     except Exception: pass
 with col2:
-    try: st.image("logo2.png", use_container_width=True)
+    try: st.image("logo2.png", width=60)
     except Exception: pass
 
 st.sidebar.markdown("---")
