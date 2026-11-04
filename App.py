@@ -195,7 +195,7 @@ elif st.session_state.app_mode == "Interaction Energy":
     systems_data = []
     for i in range(num_systems):
         with st.container(border=True):
-            st.markdown(f"**Secondary System Group {i+1}**")
+            st.markdown(f"**System Type {i+1}**")
             col1, col2, col3 = st.columns([2, 1, 3])
             with col1: m2 = st.file_uploader(f"Upload Monomer 2", type=["log", "out"], key=f"ie_m2_{i}")
             with col2: n_m2 = st.number_input(f"Quantity (n)", min_value=1, max_value=50, value=1, key=f"ie_qty_{i}")
@@ -553,7 +553,7 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
     with st.container(border=True):
         col1, col2 = st.columns([1, 2])
         with col1: top_n = st.number_input("How many highest E(2) values needed per file?", min_value=1, max_value=50, value=1)
-        with col2: allowed_sections = st.multiselect("Interaction types to consider:", ["within unit 1", "from unit 1 to unit 2", "from unit 2 to unit 1", "within unit 2"], default=["from unit 1 to unit 2", "from unit 2 to unit 1"])
+        with col2: allowed_sections = st.multiselect("Interaction types to consider (for highest values):", ["within unit 1", "from unit 1 to unit 2", "from unit 2 to unit 1", "within unit 2"], default=["from unit 1 to unit 2", "from unit 2 to unit 1"])
         nbo_files = st.file_uploader("Upload NBO log files (.log, .out)", accept_multiple_files=True)
     st.divider()
     if 'calc_done_nbo' not in st.session_state:
