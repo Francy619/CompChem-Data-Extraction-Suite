@@ -86,22 +86,6 @@ st.markdown("""
         font-weight: 600 !important;
         transition: all 0.2s ease-in-out !important;
     }
-    /* Force File Uploader Elements into a Single Horizontal Row */
-    [data-testid="stFileUploaderDropzone"] > div {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        flex-wrap: nowrap !important;
-        gap: 10px !important;
-        padding: 10px !important;
-    }
-    
-    /* Prevent the helper text from breaking into multiple lines */
-    [data-testid="stFileUploaderDropzone"] small {
-        white-space: nowrap !important;
-        margin-top: 0 !important;
-        font-size: 0.85rem !important;
-    }
     button[kind="secondary"]:hover {
         border-color: #1E3A8A !important;
         color: #1E3A8A !important;
