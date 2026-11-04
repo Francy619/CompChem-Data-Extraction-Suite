@@ -109,7 +109,7 @@ if 'app_mode' not in st.session_state: st.session_state.app_mode = "Home"
 # ==========================================
 if st.session_state.app_mode == "Home":
         
-    st.markdown('<p class="menu-title">CompChem Data<br>Extraction Suite</p>', unsafe_allow_html=True)
+    st.markdown('<p class="menu-title"><strong>CompChem Data Extraction Suite<strong></p>', unsafe_allow_html=True)
     st.write("")
     
     # Centered 2x2 Grid for Buttons
