@@ -65,7 +65,15 @@ st.markdown("""
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
     
     /* Center Dashboard Menu */
-    .menu-title { font-size: 6.2rem; font-weight: 1000; color: #1E3A8A; text-align: center; margin-top: 10px; margin-bottom: 20px; font-family: 'Segoe UI', sans-serif; line-height: 1.2; }
+   /* Center Dashboard Menu - Ultra Professional Font Styling */
+    .menu-title { 
+        font-size: 4.8rem; font-weight: 900; color: #1E3A8A;text-align: center; 
+        margin-top: 40px; 
+        margin-bottom: 40px; 
+        font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif; 
+        line-height: 1.1; 
+        letter-spacing: -2px; 
+    }
     .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
     
     /* Action Buttons (Primary) */
