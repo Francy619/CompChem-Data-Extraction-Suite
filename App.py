@@ -75,7 +75,7 @@ col1, col2 = st.sidebar.columns(2)
 
 with col1:
     try:
-        st.image("logo1.png", use_container_width=True)
+        st.image("logo.png", use_container_width=True)
     except Exception:
         pass # Fails gracefully if logo1 is missing
 
