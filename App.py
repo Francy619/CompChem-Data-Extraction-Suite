@@ -64,10 +64,9 @@ st.markdown("""
     .sub-title { font-size: 1.1rem; color: #4B5563; font-family: 'Segoe UI', sans-serif; }
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
     
-    /* Center Dashboard Menu */
-   /* Center Dashboard Menu - Ultra Professional Font Styling */
+    /* Center Dashboard Menu - Ultra Professional Font Styling */
     .menu-title { 
-        font-size: 4.8rem; font-weight: 600; color: #1E3A8A;text-align: center; 
+        font-size: 4.8rem; font-weight: 600; color: #1E3A8A; text-align: center; 
         margin-top: 20px; 
         margin-bottom: 40px; 
         font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif; 
@@ -77,27 +76,39 @@ st.markdown("""
     .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
     
     /* Action Buttons (Primary) */
-    button[kind="primary"] { background-color: #1E3A8A !important; color: #FFFFFF !important; border: none !important; border-radius: 8px !important; font-weight: 700 !important; padding: 14px 24px !important; transition: all 0.3s ease-in-out !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; }
-    button[kind="primary"]:hover { background-color: #2563EB !important; transform: translateY(-2px); }
+    button[kind="primary"] { 
+        background-color: #1E3A8A !important; 
+        color: #FFFFFF !important; 
+        border: none !important; 
+        border-radius: 8px !important; 
+        font-weight: 700 !important; 
+        padding: 14px 24px !important; 
+        transition: all 0.3s ease-in-out !important; 
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; 
+    }
+    button[kind="primary"]:hover { 
+        background-color: #2563EB !important; 
+        transform: translateY(-2px); 
+    }
     
-    /* Grid Home Buttons (Secondary) */
+    /* Grid Home Buttons (Secondary) - Blue Box styling */
     button[kind="secondary"] { 
-        background-color: #F8FAFC !important; 
-        color: #1E3A8A !important; 
-        border: 2px solid #CBD5E1 !important; 
+        background-color: #1E3A8A !important; 
+        color: #FFFFFF !important; 
+        border: none !important; 
         border-radius: 12px !important; 
         font-weight: 800 !important; 
         font-size: 1.4rem !important; 
         min-height: 140px !important;
         padding: 30px 20px !important; 
         transition: all 0.3s ease-in-out !important; 
+        box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important;
     }
     button[kind="secondary"]:hover { 
-        background-color: #F1F5F9 !important; 
-        color: #0F172A !important; 
-        border-color: #1E3A8A !important; 
-        transform: translateY(-4px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+        background-color: #2563EB !important; /* Lighter bright blue */
+        color: #FFFFFF !important; 
+        transform: translateY(-6px);
+        box-shadow: 0 12px 20px rgba(37, 99, 235, 0.3) !important;
     }
     
     /* Home Button Specific Override for Internal Pages */
@@ -105,6 +116,10 @@ st.markdown("""
         min-height: auto !important;
         font-size: 1rem !important;
         padding: 10px 20px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+    .home-btn-container button:hover {
+        transform: translateY(-2px);
     }
 </style>
 """, unsafe_allow_html=True)
