@@ -72,7 +72,7 @@ st.markdown("""
         margin-bottom: 40px; 
         font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif; 
         line-height: 1.1; 
-        letter-spacing: -2px; 
+        letter-spacing: 2px; 
     }
     .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
     
