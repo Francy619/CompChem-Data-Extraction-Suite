@@ -65,7 +65,7 @@ st.markdown("""
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
     
     /* Center Dashboard Menu */
-    .menu-title { font-size: 4.2rem; font-weight: 900; color: #1E3A8A; text-align: center; margin-top: 60px; margin-bottom: 60px; font-family: 'Segoe UI', sans-serif; line-height: 1.2; }
+    .menu-title { font-size: 6.2rem; font-weight: 1000; color: #1E3A8A; text-align: center; margin-top: 10px; margin-bottom: 20px; font-family: 'Segoe UI', sans-serif; line-height: 1.2; }
     .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
     
     /* Action Buttons (Primary) */
@@ -109,7 +109,7 @@ if 'app_mode' not in st.session_state: st.session_state.app_mode = "Home"
 # ==========================================
 if st.session_state.app_mode == "Home":
         
-    st.markdown('<p class="menu-title"><strong>CompChem Data Extraction Suite<strong></p>', unsafe_allow_html=True)
+    st.markdown('<p class="menu-title">CompChem Data Extraction Suite</p>', unsafe_allow_html=True)
     st.write("")
     
     # Centered 2x2 Grid for Buttons
