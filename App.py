@@ -257,15 +257,19 @@ elif app_mode == "LED Analysis":
     
     for i in range(num_led_systems):
         with st.container(border=True):
-            st.markdown(f"**System {i+1} Configuration**") 
+            # 1. Setup the empty header placeholder
+            header_placeholder = st.empty()
             
+            # 2. Provide the upload file box for the dimer
             d_file = st.file_uploader(f"Upload Dimer/Complex File", type=["log", "out"], key=f"led_dimer_{i}")
-             if d_file:
+            
+            # 3. Update the header dynamically based on the uploaded file
+            if d_file:
                 sys_name = os.path.splitext(d_file.name)[0]
-                st.success(f"System Name: **{sys_name}**")
+                header_placeholder.markdown(f'<p class="section-header">System {i+1} Configuration: <span style="color:#2563EB;">{sys_name}</span></p>', unsafe_allow_html=True)
             else:
                 sys_name = f"System_{i+1}"
-           
+                header_placeholder.markdown(f'<p class="section-header">System {i+1} Configuration</p>', unsafe_allow_html=True)
             
             col1, col2 = st.columns(2)
             with col1:
