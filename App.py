@@ -34,81 +34,113 @@ def format_nbo(text):
 def extract_led_values(uploaded_file, target_strings):
     extracted = {}
     if uploaded_file is None: return extracted
-    
     uploaded_file.seek(0)
     lines = uploaded_file.read().decode('utf-8').splitlines()
-    
     for line in lines:
         for term in target_strings:
             if term.lower() in line.lower():
-                if term.lower().startswith("dispersion") and "non" in line.lower():
-                    continue
+                if term.lower().startswith("dispersion") and "non" in line.lower(): continue
                 parts = line.strip().split()
                 try:
                     if term == "Intra REF. energy":
                         extracted["Intra REF. energy of Fragment 1"] = Decimal(parts[3])
                         extracted["Intra REF. energy of Fragment 2"] = Decimal(parts[4])
-                    else:
-                        extracted[term] = Decimal(parts[-1])
-                except (ValueError, IndexError):
-                    continue
+                    else: extracted[term] = Decimal(parts[-1])
+                except (ValueError, IndexError): continue
     return extracted
 
 # ==========================================
 # 2. PAGE CONFIG & CSS
 # ==========================================
-st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
+    /* Hide sidebar completely for full screen feel */
+    [data-testid="collapsedControl"] { display: none; }
+    
     .main-header-container { text-align: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #E2E8F0; }
     .main-title { font-size: 3.2rem; color: #1E3A8A; font-weight: 800; margin-bottom: 5px; font-family: 'Segoe UI', sans-serif; }
     .sub-title { font-size: 1.1rem; color: #4B5563; font-family: 'Segoe UI', sans-serif; }
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
-    .sidebar-title { font-size: 2.2rem; font-weight: 800; color: #1E3A8A; text-align: center; margin-top: -10px; margin-bottom: 20px; font-family: 'Segoe UI', sans-serif; }
+    
+    /* Center Dashboard Menu */
+    .menu-title { font-size: 2.5rem; font-weight: 800; color: #1E3A8A; text-align: center; margin-bottom: 30px; font-family: 'Segoe UI', sans-serif; }
+    .footer-text { text-align: center; color: #64748B; font-size: 0.9rem; margin-top: 50px; border-top: 1px solid #E2E8F0; padding-top: 20px;}
+    
+    /* Navigation Buttons */
+    div[data-testid="stVerticalBlock"] > div > div > button.st-emotion-cache-121i060 { /* Default secondary button override */
+        height: 80px; 
+        font-size: 1.2rem !important; 
+        border-radius: 12px !important; 
+    }
     
     button[kind="primary"] { background-color: #1E3A8A !important; color: #FFFFFF !important; border: none !important; border-radius: 8px !important; font-weight: 700 !important; padding: 14px 24px !important; transition: all 0.3s ease-in-out !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; }
     button[kind="primary"]:hover { background-color: #2563EB !important; transform: translateY(-2px); }
     button[kind="secondary"] { background-color: #F8FAFC !important; color: #475569 !important; border: 1px solid #CBD5E1 !important; border-radius: 8px !important; font-weight: 700 !important; padding: 14px 24px !important; transition: all 0.3s ease-in-out !important; }
     button[kind="secondary"]:hover { background-color: #E2E8F0 !important; color: #1E293B !important; border-color: #94A3B8 !important; }
+    
+    /* Home Button Specific */
+    .home-btn-container { margin-bottom: 20px; }
 </style>
 """, unsafe_allow_html=True)
 
+# Initialize Session State
+if 'app_mode' not in st.session_state: st.session_state.app_mode = "Home"
+
 # ==========================================
-# 3. SIDEBAR NAVIGATION
+# 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
-col1, col2, col3, col4 = st.sidebar.columns([1, 1, 1, 1])
-with col2:
-    try: st.image("logo1.png", width=60)
-    except Exception: pass
-with col3:
-    try: st.image("logo2.png", width=60)
-    except Exception: pass
-
-st.sidebar.markdown("---")
-st.sidebar.markdown('<p class="sidebar-title">📊 Dashboard</p>', unsafe_allow_html=True)
-
-if 'app_mode' not in st.session_state: st.session_state.app_mode = "Interaction Energy"
-
-btn_ie = st.sidebar.button("🔬 Interaction Energy Extractor", use_container_width=True, type="primary" if st.session_state.app_mode == "Interaction Energy" else "secondary")
-btn_led = st.sidebar.button("📊 LED Data Parser", use_container_width=True, type="primary" if st.session_state.app_mode == "LED Analysis" else "secondary")
-btn_nbo = st.sidebar.button("⚛️ NBO E(2) Extractor", use_container_width=True, type="primary" if st.session_state.app_mode == "NBO E(2) Analysis" else "secondary")
-btn_qtaim = st.sidebar.button("⭕ QTAIM Properties Tabulator ", use_container_width=True, type="primary" if st.session_state.app_mode == "QTAIM Analysis" else "secondary")
-
-if btn_ie: st.session_state.app_mode = "Interaction Energy"; st.rerun()
-if btn_led: st.session_state.app_mode = "LED Analysis"; st.rerun()
-if btn_nbo: st.session_state.app_mode = "NBO E(2) Analysis"; st.rerun()
-if btn_qtaim: st.session_state.app_mode = "QTAIM Analysis"; st.rerun()
-
-app_mode = st.session_state.app_mode
-st.sidebar.markdown("---")
-with st.sidebar.expander("ℹ️ About & Instructions"):
-    st.markdown("**Developed by:** Francis Thomas  \n**Institution:** St. Dominic's College, Kanjirapally")
+if st.session_state.app_mode == "Home":
+    # Logos at top
+    col_l1, col_l2, col_l3, col_l4, col_l5, col_l6 = st.columns([2, 1, 1, 1, 1, 2])
+    with col_l3:
+        try: st.image("logo1.png", width=80)
+        except Exception: pass
+    with col_l4:
+        try: st.image("logo2.png", width=80)
+        except Exception: pass
+        
+    st.markdown('<p class="menu-title">CompChem Data Extraction Suite</p>', unsafe_allow_html=True)
+    st.write("")
+    
+    # Centered Menu Buttons
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        if st.button("🔬 Interaction Energy Extractor", use_container_width=True): 
+            st.session_state.app_mode = "Interaction Energy"
+            st.rerun()
+        st.write("")
+        if st.button("📊 Local Energy Decomposition (LED) Parser", use_container_width=True): 
+            st.session_state.app_mode = "LED Analysis"
+            st.rerun()
+        st.write("")
+        if st.button("⚛️ NBO E(2) Extractor", use_container_width=True): 
+            st.session_state.app_mode = "NBO E(2) Analysis"
+            st.rerun()
+        st.write("")
+        if st.button("⭕ QTAIM Properties Tabulator", use_container_width=True): 
+            st.session_state.app_mode = "QTAIM Analysis"
+            st.rerun()
+            
+    st.markdown("""
+    <div class="footer-text">
+        <strong>Developed by:</strong> Francis Thomas <br>
+        <strong>Institution:</strong> St. Dominic's College, Kanjirapally <br>
+        <br>
+        Automated tools for parsing outputs from Gaussian, ORCA, and Multiwfn.
+    </div>
+    """, unsafe_allow_html=True)
 
 # ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
 # ==========================================
-if app_mode == "Interaction Energy":
+elif st.session_state.app_mode == "Interaction Energy":
+    col_home, _ = st.columns([1, 6])
+    with col_home:
+        if st.button("🏠 Back to Home", type="secondary"): 
+            st.session_state.app_mode = "Home"; st.rerun()
+
     st.markdown('<div class="main-header-container"><div class="main-title">🔬 Interaction Energy Calculator</div><div class="sub-title">Automated extraction and computation of ΔE from Gaussian log files.</div></div>', unsafe_allow_html=True)
 
     col_left, col_right = st.columns(2)
@@ -149,11 +181,11 @@ if app_mode == "Interaction Energy":
         if not st.session_state.calc_done_ie:
             col_s1, col_btn, col_s2 = st.columns([1, 1, 1])
             with col_btn:
-                if st.button("Calculate Energies", type="primary", use_container_width=True): do_calc = True
+                if st.button("Extract Data & Tabulate", type="primary", use_container_width=True): do_calc = True
         else:
             col_s1, col_calc, col_down, col_s2 = st.columns([2, 3, 3, 2])
             with col_calc:
-                if st.button("Calculate Energies", type="primary", use_container_width=True): do_calc = True
+                if st.button("Extract Data & Tabulate", type="primary", use_container_width=True): do_calc = True
             with col_down:
                 st.download_button("Download Data (.xlsx)", data=st.session_state.excel_data_ie, file_name=st.session_state.download_name_ie, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
@@ -247,7 +279,12 @@ if app_mode == "Interaction Energy":
 # ==========================================
 # 5. APP MODE 2: LED ANALYSIS
 # ==========================================
-elif app_mode == "LED Analysis":
+elif st.session_state.app_mode == "LED Analysis":
+    col_home, _ = st.columns([1, 6])
+    with col_home:
+        if st.button("🏠 Back to Home", type="secondary"): 
+            st.session_state.app_mode = "Home"; st.rerun()
+            
     st.markdown('<div class="main-header-container"><div class="main-title">📊 Local Energy Decomposition (LED) Parser</div><div class="sub-title">Parse Orca DLPNO-CCSD(T) output to decompose interaction energies.</div></div>', unsafe_allow_html=True)
     
     num_led_systems = st.number_input("How many systems to evaluate?", min_value=1, max_value=10, value=1)
@@ -257,13 +294,9 @@ elif app_mode == "LED Analysis":
     
     for i in range(num_led_systems):
         with st.container(border=True):
-            # 1. Setup the empty header placeholder
             header_placeholder = st.empty()
-            
-            # 2. Provide the upload file box for the dimer
             d_file = st.file_uploader(f"Upload Dimer/Complex File", type=["log", "out"], key=f"led_dimer_{i}")
             
-            # 3. Update the header dynamically based on the uploaded file
             if d_file:
                 sys_name = os.path.splitext(d_file.name)[0]
                 header_placeholder.markdown(f'<p class="section-header">System {i+1} Configuration: <span style="color:#2563EB;">{sys_name}</span></p>', unsafe_allow_html=True)
@@ -305,11 +338,11 @@ elif app_mode == "LED Analysis":
         if not st.session_state.calc_done_led:
             col_s1, col_btn, col_s2 = st.columns([1, 1, 1])
             with col_btn:
-                if st.button("Run LED Parser", type="primary", use_container_width=True): do_led_calc = True
+                if st.button("Parse LED Data", type="primary", use_container_width=True): do_led_calc = True
         else:
             col_s1, col_calc, col_down, col_s2 = st.columns([2, 3, 3, 2])
             with col_calc:
-                if st.button("Run LED Parser", type="primary", use_container_width=True): do_led_calc = True
+                if st.button("Parse LED Data", type="primary", use_container_width=True): do_led_calc = True
             with col_down:
                 st.download_button("Download LED Report (.xlsx)", data=st.session_state.excel_data_led, file_name="LED_Batch_Results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
@@ -397,7 +430,7 @@ elif app_mode == "LED Analysis":
                 all_calculations.append(calc)
 
             if not all_calculations:
-                st.error("No valid calculations could be processed.")
+                st.error("No valid data could be parsed.")
                 st.session_state.calc_done_led = False
                 st.stop()
 
@@ -407,7 +440,6 @@ elif app_mode == "LED Analysis":
             center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             
-            # RAW VALUES TAB
             ws_values = workbook.add_worksheet('Extracted Values')
             all_val_keys = set()
             for data in unique_extracted_data.values(): all_val_keys.update(data.keys())
@@ -424,8 +456,7 @@ elif app_mode == "LED Analysis":
                     if isinstance(val, Decimal): ws_values.write_number(row_num, col_num, float(val), cell_fmt)
                     else: ws_values.write(row_num, col_num, str(val), cell_fmt)
 
-            # CALCULATIONS TAB
-            ws_calcs = workbook.add_worksheet('Calculations (kcal per mol)')
+            ws_calcs = workbook.add_worksheet('Tabulated Data (kcal per mol)')
             calc_columns = list(all_calculations[0].keys())
             sup = workbook.add_format({'bold': True, 'font_script': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             sub = workbook.add_format({'bold': True, 'font_script': 2, 'font_name': 'Times New Roman', 'font_size': 12})
@@ -464,14 +495,19 @@ elif app_mode == "LED Analysis":
             workbook.close()
             st.session_state.excel_data_led = output.getvalue()
             st.session_state.calc_done_led = True
-            st.success("LED Analysis Complete! Click Download to view the report.")
+            st.success("LED Data Parsing Complete! Click Download to view the report.")
             st.rerun()
 
 # ==========================================
-# 6. APP MODE 3: NBO E(2) ANALYSIS
+# 6. APP MODE 3: NBO E(2) EXTRACTOR
 # ==========================================
-elif app_mode == "NBO E(2) Analysis":
-    st.markdown('<div class="main-header-container"><div class="main-title">⚛️ NBO E(2) Extractor</div></div>', unsafe_allow_html=True)
+elif st.session_state.app_mode == "NBO E(2) Analysis":
+    col_home, _ = st.columns([1, 6])
+    with col_home:
+        if st.button("🏠 Back to Home", type="secondary"): 
+            st.session_state.app_mode = "Home"; st.rerun()
+            
+    st.markdown('<div class="main-header-container"><div class="main-title">⚛️ NBO E(2) Extractor</div><div class="sub-title">Parse and tabulate Natural Bond Orbital donor-acceptor interactions from log files.</div></div>', unsafe_allow_html=True)
     with st.container(border=True):
         col1, col2 = st.columns([1, 2])
         with col1: top_n = st.number_input("How many highest E(2) values needed per file?", min_value=1, max_value=50, value=1)
@@ -490,11 +526,11 @@ elif app_mode == "NBO E(2) Analysis":
         if not st.session_state.calc_done_nbo:
             col_s1, col_btn, col_s2 = st.columns([1, 1, 1])
             with col_btn:
-                if st.button("Run NBO Extraction", type="primary", use_container_width=True): do_nbo_run = True
+                if st.button("Extract NBO Data", type="primary", use_container_width=True): do_nbo_run = True
         else:
             col_s1, col_calc, col_down, col_s2 = st.columns([2, 3, 3, 2])
             with col_calc:
-                if st.button("Run NBO Extraction", type="primary", use_container_width=True): do_nbo_run = True
+                if st.button("Extract NBO Data", type="primary", use_container_width=True): do_nbo_run = True
             with col_down:
                 st.download_button("Download NBO Report (.xlsx)", data=st.session_state.excel_data_nbo, file_name="NBO_Batch_Results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
@@ -558,10 +594,15 @@ elif app_mode == "NBO E(2) Analysis":
             st.dataframe(pd.DataFrame(st.session_state.all_top_n, columns=["System", "Interaction Section", "Donor (i)", "Acceptor (j)", "E(2) kcal/mol", "E(j)-E(i) a.u.", "F(i,j) a.u."]), use_container_width=True)
 
 # ==========================================
-# 7. APP MODE 4: QTAIM ANALYSIS
+# 7. APP MODE 4: QTAIM PROPERTIES TABULATOR
 # ==========================================
-elif app_mode == "QTAIM Analysis":
-    st.markdown('<div class="main-header-container"><div class="main-title">⭕ QTAIM Properties Tabulator</div></div>', unsafe_allow_html=True)
+elif st.session_state.app_mode == "QTAIM Analysis":
+    col_home, _ = st.columns([1, 6])
+    with col_home:
+        if st.button("🏠 Back to Home", type="secondary"): 
+            st.session_state.app_mode = "Home"; st.rerun()
+            
+    st.markdown('<div class="main-header-container"><div class="main-title">⭕ QTAIM Properties Tabulator</div><div class="sub-title">Parse Multiwfn CPprop.txt files to extract density properties at Bond Critical Points.</div></div>', unsafe_allow_html=True)
     with st.container(border=True):
         num_qtaim_files = st.number_input("How many CPprop output files are you analyzing?", min_value=1, max_value=20, value=1)
     st.write("")
@@ -584,11 +625,11 @@ elif app_mode == "QTAIM Analysis":
         if not st.session_state.calc_done_qtaim:
             col_s1, col_btn, col_s2 = st.columns([1, 1, 1])
             with col_btn:
-                if st.button("Run QTAIM Extraction", type="primary", use_container_width=True): do_qtaim_run = True
+                if st.button("Parse QTAIM Data", type="primary", use_container_width=True): do_qtaim_run = True
         else:
             col_s1, col_calc, col_down, col_s2 = st.columns([2, 3, 3, 2])
             with col_calc:
-                if st.button("Run QTAIM Extraction", type="primary", use_container_width=True): do_qtaim_run = True
+                if st.button("Parse QTAIM Data", type="primary", use_container_width=True): do_qtaim_run = True
             with col_down:
                 st.download_button("Download QTAIM Report (.xlsx)", data=st.session_state.excel_data_qtaim, file_name="QTAIM_Results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
