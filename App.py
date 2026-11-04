@@ -257,14 +257,14 @@ elif app_mode == "LED Analysis":
     
     for i in range(num_led_systems):
         with st.container(border=True):
-            st.markdown(f"**System {i+1} Configuration**")  if d_file:
+            st.markdown(f"**System {i+1} Configuration**") 
+            
+            d_file = st.file_uploader(f"Upload Dimer/Complex File", type=["log", "out"], key=f"led_dimer_{i}")
+             if d_file:
                 sys_name = os.path.splitext(d_file.name)[0]
                 st.success(f"System Name: **{sys_name}**")
             else:
                 sys_name = f"System_{i+1}"
-            
-            d_file = st.file_uploader(f"Upload Dimer/Complex File", type=["log", "out"], key=f"led_dimer_{i}")
-            
            
             
             col1, col2 = st.columns(2)
