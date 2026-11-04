@@ -50,91 +50,85 @@ for i in range(num_systems):
 
 st.markdown("---")
 
+# --- INITIALIZE SESSION STATE ---
+# This prevents the app from resetting when the download button is clicked
+if 'calc_done' not in st.session_state:
+    st.session_state.calc_done = False
+    st.session_state.results = []
+    st.session_state.excel_data = None
+    st.session_state.download_name = ""
+
+# --- BUTTON LAYOUT (CENTERED) ---
+# We use empty spacer columns on the left and right to push the buttons to the center
+col_spacer1, col_calc, col_down, col_spacer2 = st.columns([2, 3, 3, 2])
+
+with col_calc:
+    calc_btn = st.button("Calculate Interaction Energies", type="primary")
+
 # --- EXECUTE CALCULATIONS ---
-if st.button("Calculate Interaction Energies", type="primary", use_container_width=True):
+if calc_btn:
     if not m1_file:
         st.error("⚠️ Please upload Monomer 1.")
-        st.stop()
-        
-    with st.spinner("Extracting energies and generating tabulations..."):
-        e_m1 = extract_energy(m1_file)
-        if e_m1 is None:
-            st.error("Could not extract energy from Monomer 1.")
-            st.stop()
-            
-        results = []
-        is_first_in_sheet = True
-        
-        for idx, sys in enumerate(systems_data):
-            m2_file = sys["m2"]
-            n_m2 = sys["multiplier"]
-            dimer_files = sys["complexes"]
-            
-            if not m2_file or not dimer_files:
-                continue
+        st.session_state.calc_done = False
+    else:
+        with st.spinner("Extracting energies and generating tabulations..."):
+            e_m1 = extract_energy(m1_file)
+            if e_m1 is None:
+                st.error("Could not extract energy from Monomer 1.")
+                st.stop()
                 
-            e_m2_single = extract_energy(m2_file)
-            if e_m2_single is None:
-                st.warning(f"Could not extract energy from {m2_file.name}. Skipping this group.")
-                continue
+            results = []
+            is_first_in_sheet = True
             
-            # Multiply the solvent energy by the quantity provided by the user
-            e_m2_total = e_m2_single * n_m2
+            for idx, sys in enumerate(systems_data):
+                m2_file = sys["m2"]
+                n_m2 = sys["multiplier"]
+                dimer_files = sys["complexes"]
                 
-            group_results = []
-            
-            for d_file in dimer_files:
-                e_dimer = extract_energy(d_file)
-                if e_dimer is not None:
-                    delta_au = e_dimer - (e_m1 + e_m2_total)
-                    delta_kcal = delta_au * HARTREE_TO_KCAL
+                if not m2_file or not dimer_files:
+                    continue
                     
-                    group_results.append({
-                        "Complex File": d_file.name,
-                        "E Complex (a.u.)": e_dimer,
-                        "Amino Acid File": m1_file.name,
-                        "E Amino Acid (a.u.)": e_m1,
-                        "Solvent File": m2_file.name,
-                        "Qty": int(n_m2),
-                        "E Solvent (single a.u.)": e_m2_single,
-                        "ΔE (a.u.)": delta_au,
-                        "ΔE (kcal/mol)": delta_kcal
-                    })
-            
-            if group_results:
-                min_kcal = min(r["ΔE (kcal/mol)"] for r in group_results)
-                for i, r in enumerate(group_results):
-                    r["Is_Best"] = (r["ΔE (kcal/mol)"] == min_kcal)
-                    r["Is_First_In_Group"] = (i == 0)
-                    r["Is_First_In_Sheet"] = is_first_in_sheet
-                    results.append(r)
-                    is_first_in_sheet = False
+                e_m2_single = extract_energy(m2_file)
+                if e_m2_single is None:
+                    st.warning(f"Could not extract energy from {m2_file.name}. Skipping this group.")
+                    continue
+                
+                e_m2_total = e_m2_single * n_m2
+                group_results = []
+                
+                for d_file in dimer_files:
+                    e_dimer = extract_energy(d_file)
+                    if e_dimer is not None:
+                        delta_au = e_dimer - (e_m1 + e_m2_total)
+                        delta_kcal = delta_au * HARTREE_TO_KCAL
+                        
+                        group_results.append({
+                            "Complex File": d_file.name,
+                            "E Complex (a.u.)": e_dimer,
+                            "Amino Acid File": m1_file.name,
+                            "E Amino Acid (a.u.)": e_m1,
+                            "Solvent File": m2_file.name,
+                            "Qty": int(n_m2),
+                            "E Solvent (single a.u.)": e_m2_single,
+                            "ΔE (a.u.)": delta_au,
+                            "ΔE (kcal/mol)": delta_kcal
+                        })
+                
+                if group_results:
+                    min_kcal = min(r["ΔE (kcal/mol)"] for r in group_results)
+                    for i, r in enumerate(group_results):
+                        r["Is_Best"] = (r["ΔE (kcal/mol)"] == min_kcal)
+                        r["Is_First_In_Group"] = (i == 0)
+                        r["Is_First_In_Sheet"] = is_first_in_sheet
+                        results.append(r)
+                        is_first_in_sheet = False
 
-        if not results:
-            st.error("No valid calculations could be completed. Please ensure you uploaded matching complex files for your secondary monomers.")
-            st.stop()
+            if not results:
+                st.error("No valid calculations could be completed. Please ensure you uploaded matching complex files for your secondary monomers.")
+                st.session_state.calc_done = False
+                st.stop()
 
-        # --- UI: TABS FOR TABULATION & DOWNLOAD ---
-        tab1, tab2 = st.tabs(["📊 Data Tabulation", "📥 Download Report"])
-        
-        with tab1:
-            st.success("Calculations complete!")
-            display_df = pd.DataFrame(results).drop(columns=["Is_Best", "Is_First_In_Sheet", "Is_First_In_Group"])
-            for col in display_df.columns:
-                if "E " in col or "ΔE" in col:
-                    display_df[col] = display_df[col].astype(float)
-            
-            def highlight_best(row):
-                idx = row.name
-                if results[idx]["Is_Best"]:
-                    return ['background-color: #FFFF00; color: black'] * len(row)
-                return [''] * len(row)
-            
-            styled_df = display_df.style.apply(highlight_best, axis=1).format(precision=6)
-            st.dataframe(styled_df, use_container_width=True)
-            
-        with tab2:
-            st.markdown("### Generate Styled Excel File")
+            # --- GENERATE EXCEL BUFFER ---
             output = io.BytesIO()
             workbook = xlsxwriter.Workbook(output, {'in_memory': True})
             worksheet = workbook.add_worksheet("Interaction Energies")
@@ -159,45 +153,4 @@ if st.button("Calculate Interaction Energies", type="primary", use_container_wid
             worksheet.set_column('C:D', 22)
             worksheet.set_column('E:E', 20)
             worksheet.set_column('F:F', 8)  # Qty column
-            worksheet.set_column('G:G', 25) # E Monomer 2 column
-            worksheet.set_column('H:I', 18)
-            
-            for row_num, row_data in enumerate(results, start=1):
-                worksheet.set_row(row_num, 20)
-                
-                worksheet.write(row_num, 0, row_data["Complex File"], left_format)
-                worksheet.write_number(row_num, 1, float(row_data["E Complex (a.u.)"]), center_format)
-                
-                if row_data["Is_First_In_Sheet"]:
-                    worksheet.write(row_num, 2, row_data["Amino Acid File"], left_format)
-                    worksheet.write_number(row_num, 3, float(row_data["E Amino Acid (a.u.)"]), center_format)
-                else:
-                    worksheet.write(row_num, 2, "", left_format)
-                    worksheet.write(row_num, 3, "", center_format)
-                    
-                if row_data["Is_First_In_Group"]:
-                    worksheet.write(row_num, 4, row_data["Solvent File"], left_format)
-                    worksheet.write_number(row_num, 5, row_data["Qty"], center_format)
-                    worksheet.write_number(row_num, 6, float(row_data["E Solvent (single a.u.)"]), center_format)
-                else:
-                    worksheet.write(row_num, 4, "", left_format)
-                    worksheet.write(row_num, 5, "", center_format)
-                    worksheet.write(row_num, 6, "", center_format)
-                    
-                worksheet.write_number(row_num, 7, float(row_data["ΔE (a.u.)"]), center_format)
-                
-                fmt = highlight_format if row_data["Is_Best"] else center_format
-                worksheet.write_number(row_num, 8, float(row_data["ΔE (kcal/mol)"]), fmt)
-                        
-            workbook.close()
-            
-            base_name = m1_file.name.split('.')[0]
-            download_name = f"{base_name}_Universal_Energies.xlsx"
-            
-            st.download_button(
-                label=f"📥 Download {download_name}",
-                data=output.getvalue(),
-                file_name=download_name,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary"
-            )
+            worksheet.set_column('G:G', 2
