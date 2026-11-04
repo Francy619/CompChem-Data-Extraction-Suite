@@ -63,7 +63,7 @@ st.markdown("""
     
     /* Hover Effect for Buttons */
     div.stButton > button:hover, div.stDownloadButton > button:hover {
-        background-color: #2563EB !important; /* Lighter vivid blue on hover */
+        background-color: #2563EB !important;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
         color: #FFFFFF !important;
         transform: translateY(-1px);
@@ -107,7 +107,7 @@ systems_data = []
 
 for i in range(num_systems):
     with st.container(border=True):
-        st.markdown(f"**System Type {i+1}**")
+        st.markdown(f"**Secondary System Group {i+1}**")
         col1, col2, col3 = st.columns([2, 1, 3])
         
         with col1:
@@ -128,14 +128,34 @@ if 'calc_done' not in st.session_state:
     st.session_state.excel_data = None
     st.session_state.download_name = ""
 
-# --- BUTTON LAYOUT (CENTERED) ---
-col_spacer1, col_calc, col_down, col_spacer2 = st.columns([2, 3, 3, 2])
+# --- BUTTON LAYOUT (DYNAMIC & CENTERED) ---
+btn_placeholder = st.empty()
+do_calc = False
 
-with col_calc:
-    calc_btn = st.button("Calculate Energies", use_container_width=True)
+with btn_placeholder.container():
+    if not st.session_state.calc_done:
+        # Initial State: 1 Centered Button
+        col_s1, col_btn, col_s2 = st.columns([1, 1, 1])
+        with col_btn:
+            if st.button("Calculate Energies", type="primary", use_container_width=True):
+                do_calc = True
+    else:
+        # Final State: 2 Centered Buttons Side-by-Side
+        col_s1, col_calc, col_down, col_s2 = st.columns([2, 3, 3, 2])
+        with col_calc:
+            if st.button("Calculate Energies", type="primary", use_container_width=True):
+                do_calc = True
+        with col_down:
+            st.download_button(
+                label="Download Data (.xlsx)",
+                data=st.session_state.excel_data,
+                file_name=st.session_state.download_name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
 
 # --- EXECUTE CALCULATIONS ---
-if calc_btn:
+if do_calc:
     if not m1_file:
         st.error("Please upload Monomer 1 to proceed.")
         st.session_state.calc_done = False
@@ -260,18 +280,12 @@ if calc_btn:
             base_name = m1_file.name.split('.')[0]
             st.session_state.download_name = f"{base_name}_Universal_Energies.xlsx"
             st.session_state.calc_done = True
+            
+            # Instantly redraw UI to bring up the Download button side-by-side
+            st.rerun()
 
-# --- SHOW TABLE AND DOWNLOAD BUTTON ---
+# --- SHOW TABLE AFTER CALCULATION ---
 if st.session_state.calc_done:
-    with col_down:
-        st.download_button(
-            label="Download Data (.xlsx)",
-            data=st.session_state.excel_data,
-            file_name=st.session_state.download_name,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-    
     st.write("") 
     st.markdown('<p class="section-header" style="text-align: center; border: none; margin-top: 20px;">Tabulated Results</p>', unsafe_allow_html=True)
     
