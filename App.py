@@ -17,11 +17,9 @@ def extract_energy(uploaded_file, is_bsse=False):
     content = uploaded_file.read().decode('utf-8')
     
     if is_bsse:
-        # Extract Counterpoise corrected energy for complexes
         matches = re.findall(r'Counterpoise:\s*corrected\s*energy\s*=\s*([-+]?\d*\.\d+)', content, re.IGNORECASE)
         return Decimal(matches[-1]) if matches else None
     else:
-        # Standard HF extraction
         stitched = re.sub(r'[\r\n]+ ', '', content)
         matches = re.findall(r'HF=([-+]?\d*\.\d+|\d+)', stitched)
         return Decimal(matches[-1]) if matches else None
@@ -37,31 +35,49 @@ def format_nbo(text):
 # ==========================================
 # 2. PAGE CONFIG & CSS
 # ==========================================
-st.set_page_config(page_title="Computational Chemistry Tools", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
+    /* Main Headings */
     .main-header-container { text-align: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #E2E8F0; }
     .main-title { font-size: 3.2rem; color: #1E3A8A; font-weight: 800; margin-bottom: 5px; font-family: 'Segoe UI', sans-serif; }
     .sub-title { font-size: 1.1rem; color: #4B5563; font-family: 'Segoe UI', sans-serif; }
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
     
-    /* Custom Button Styling (Blue with Hover) */
-    div.stButton > button, div.stDownloadButton > button { 
-        background-color: #1E3A8A !important; 
-        color: #FFFFFF !important; 
-        border: none !important; 
-        border-radius: 6px !important; 
-        font-weight: 600 !important; 
-        padding: 10px 24px !important; 
-        transition: all 0.3s ease-in-out !important; 
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important; 
+    /* Sidebar Dashboard Heading */
+    .sidebar-title { font-size: 2.2rem; font-weight: 800; color: #1E3A8A; text-align: center; margin-top: -10px; margin-bottom: 20px; font-family: 'Segoe UI', sans-serif; }
+    
+    /* Primary Buttons (Selected Tabs & Action Buttons) */
+    button[kind="primary"] {
+        background-color: #1E3A8A !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 700 !important;
+        padding: 14px 24px !important;
+        transition: all 0.3s ease-in-out !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
     }
-    div.stButton > button:hover, div.stDownloadButton > button:hover { 
-        background-color: #2563EB !important; 
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important; 
-        color: #FFFFFF !important; 
-        transform: translateY(-1px); 
+    button[kind="primary"]:hover {
+        background-color: #2563EB !important;
+        transform: translateY(-2px);
+    }
+    
+    /* Secondary Buttons (Unselected Tabs & Download Buttons) */
+    button[kind="secondary"] {
+        background-color: #F8FAFC !important;
+        color: #475569 !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+        font-weight: 700 !important;
+        padding: 14px 24px !important;
+        transition: all 0.3s ease-in-out !important;
+    }
+    button[kind="secondary"]:hover {
+        background-color: #E2E8F0 !important;
+        color: #1E293B !important;
+        border-color: #94A3B8 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -69,31 +85,35 @@ st.markdown("""
 # ==========================================
 # 3. SIDEBAR NAVIGATION & BRANDING
 # ==========================================
-# --- Add Institutional Logos Side-by-Side ---
-# (Make sure to upload 'logo1.png' and 'logo2.png' to your GitHub repository)
 col1, col2 = st.sidebar.columns(2)
-
 with col1:
-    try:
-        st.image("logo.png", use_container_width=True)
-    except Exception:
-        pass # Fails gracefully if logo1 is missing
-
+    try: st.image("logo1.png", use_container_width=True)
+    except Exception: pass
 with col2:
-    try:
-        st.image("logo2.png", use_container_width=True)
-    except Exception:
-        pass # Fails gracefully if logo2 is missing
+    try: st.image("logo2.png", use_container_width=True)
+    except Exception: pass
 
 st.sidebar.markdown("---")
+st.sidebar.markdown('<p class="sidebar-title">📊 Dashboard</p>', unsafe_allow_html=True)
 
-# --- Navigation ---
-st.sidebar.markdown("### Select Calculation Mode")
-app_mode = st.sidebar.radio("Choose Tool:", ["Interaction Energy Calculator", "NBO E(2) Analysis"])
+# --- Button-Like Tabs using Session State ---
+if 'app_mode' not in st.session_state:
+    st.session_state.app_mode = "Interaction Energy Calculator"
+
+btn_ie = st.sidebar.button("🔬 Interaction Energy", use_container_width=True, 
+                           type="primary" if st.session_state.app_mode == "Interaction Energy Calculator" else "secondary")
+btn_nbo = st.sidebar.button("⚛️ NBO E(2) Analysis", use_container_width=True, 
+                            type="primary" if st.session_state.app_mode == "NBO E(2) Analysis" else "secondary")
+
+if btn_ie:
+    st.session_state.app_mode = "Interaction Energy Calculator"
+    st.rerun()
+if btn_nbo:
+    st.session_state.app_mode = "NBO E(2) Analysis"
+    st.rerun()
+
+app_mode = st.session_state.app_mode
 st.sidebar.markdown("---")
-
-# --- Instructions & Institutional Info ---
-st.sidebar.info("Upload Gaussian output files (.log or .out) to extract data and generate formatted Excel reports.")
 
 with st.sidebar.expander("ℹ️ About & Instructions"):
     st.markdown("""
@@ -115,18 +135,7 @@ if app_mode == "Interaction Energy Calculator":
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander("View Quick Guide"):
-        st.markdown("""
-        **Workflow Instructions:**
-        1. **Primary System:** Upload your central monomer (e.g., Amino Acid).
-        2. **Secondary Systems:** Specify how many different solvents or ligands you are testing and whether BSSE was calculated.
-        3. **Upload & Map:** For each secondary system, upload the pure Monomer 2 file, set its quantity ($n$), and upload the complex files.
-        4. **Calculate:** The tool applies the formula: $\Delta E = E_{\text{Complex}} - (E_{\text{Monomer1}} + n \\times E_{\text{Monomer2}})$.
-        """)
-
-    # --- TOP ROW: FRAMED CONFIGURATION ---
     col_left, col_right = st.columns(2)
-
     with col_left:
         with st.container(border=True):
             st.markdown('<p class="section-header">1. Primary Reference System</p>', unsafe_allow_html=True)
@@ -136,11 +145,10 @@ if app_mode == "Interaction Energy Calculator":
         with st.container(border=True):
             st.markdown('<p class="section-header">2. Secondary Systems (Solvents, Ligands)</p>', unsafe_allow_html=True)
             num_systems = st.number_input("Number of secondary systems to evaluate:", min_value=1, max_value=20, value=1)
-            bsse_choice = st.radio("BSSE Calculated?", ["No", "Yes"], horizontal=True, help="If Yes, complex energies will be extracted from the 'Counterpoise: corrected energy =' line.")
+            bsse_choice = st.radio("BSSE Calculated?", ["No", "Yes"], horizontal=True)
             is_bsse = (bsse_choice == "Yes")
 
-    # --- DYNAMIC GROUPS WITH MULTIPLIERS ---
-    st.write("") # Spacer
+    st.write("") 
     systems_data = []
 
     for i in range(num_systems):
@@ -159,14 +167,12 @@ if app_mode == "Interaction Energy Calculator":
 
     st.divider()
 
-    # --- INITIALIZE SESSION STATE ---
     if 'calc_done_ie' not in st.session_state:
         st.session_state.calc_done_ie = False
         st.session_state.results_ie = []
         st.session_state.excel_data_ie = None
         st.session_state.download_name_ie = ""
 
-    # --- BUTTON LAYOUT (DYNAMIC & CENTERED) ---
     btn_placeholder = st.empty()
     do_calc = False
 
@@ -182,22 +188,15 @@ if app_mode == "Interaction Energy Calculator":
                 if st.button("Calculate Energies", type="primary", use_container_width=True):
                     do_calc = True
             with col_down:
-                st.download_button(
-                    label="Download Data (.xlsx)",
-                    data=st.session_state.excel_data_ie,
-                    file_name=st.session_state.download_name_ie,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
+                st.download_button("Download Data (.xlsx)", data=st.session_state.excel_data_ie, file_name=st.session_state.download_name_ie, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
-    # --- EXECUTE CALCULATIONS ---
     if do_calc:
         if not m1_file:
             st.error("Please upload Monomer 1 to proceed.")
             st.session_state.calc_done_ie = False
         else:
             with st.spinner("Processing Gaussian outputs..."):
-                e_m1 = extract_energy(m1_file, is_bsse=False) # Monomers usually standard HF
+                e_m1 = extract_energy(m1_file, is_bsse=False)
                 if e_m1 is None:
                     st.error("Failed to extract energy from Monomer 1.")
                     st.stop()
@@ -212,22 +211,16 @@ if app_mode == "Interaction Energy Calculator":
                     
                     if not m2_file or not dimer_files: continue
                         
-                    e_m2_single = extract_energy(m2_file, is_bsse=False) # Monomers usually standard HF
-                    if e_m2_single is None:
-                        st.warning(f"Failed to extract energy from {m2_file.name}. Skipping.")
-                        continue
+                    e_m2_single = extract_energy(m2_file, is_bsse=False) 
+                    if e_m2_single is None: continue
                     
                     e_m2_total = e_m2_single * n_m2
                     group_results = []
                     
                     for d_file in dimer_files:
-                        # Extract complex energy based on user BSSE choice
                         e_dimer = extract_energy(d_file, is_bsse=is_bsse)
-                        
                         if e_dimer is not None:
                             delta_au = e_dimer - (e_m1 + e_m2_total)
-                            delta_kcal = delta_au * HARTREE_TO_KCAL
-                            
                             group_results.append({
                                 "Complex File": d_file.name,
                                 "E Complex (a.u.)": e_dimer,
@@ -237,10 +230,8 @@ if app_mode == "Interaction Energy Calculator":
                                 "Qty": int(n_m2),
                                 "E Monomer 2 (single a.u.)": e_m2_single,
                                 "ΔE (a.u.)": delta_au,
-                                "ΔE (kcal/mol)": delta_kcal
+                                "ΔE (kcal/mol)": delta_au * HARTREE_TO_KCAL
                             })
-                        else:
-                            st.warning(f"Could not find valid energy for '{d_file.name}'. (BSSE Mode: {is_bsse})")
                     
                     if group_results:
                         min_kcal = min(r["ΔE (kcal/mol)"] for r in group_results)
@@ -256,7 +247,6 @@ if app_mode == "Interaction Energy Calculator":
                     st.session_state.calc_done_ie = False
                     st.stop()
 
-                # --- GENERATE EXCEL BUFFER ---
                 output = io.BytesIO()
                 workbook = xlsxwriter.Workbook(output, {'in_memory': True})
                 worksheet = workbook.add_worksheet("Interaction Energies")
@@ -266,70 +256,45 @@ if app_mode == "Interaction Energy Calculator":
                 left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
                 highlight_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'bg_color': '#FFFF00', 'font_name': 'Times New Roman', 'font_size': 12})
                 
-                columns = [
-                    "Complex File", "E Complex (a.u.)", 
-                    "Monomer 1 File", "E Monomer 1 (a.u.)", 
-                    "Monomer 2 File", "Qty", "E Monomer 2 (single a.u.)", 
-                    "ΔE (a.u.)", "ΔE (kcal/mol)"
-                ]
-                
+                columns = ["Complex File", "E Complex (a.u.)", "Monomer 1 File", "E Monomer 1 (a.u.)", "Monomer 2 File", "Qty", "E Monomer 2 (single a.u.)", "ΔE (a.u.)", "ΔE (kcal/mol)"]
                 worksheet.set_row(0, 24)
                 for col_num, header in enumerate(columns): worksheet.write(0, col_num, header, header_format)
-                    
-                worksheet.set_column('A:B', 22); worksheet.set_column('C:D', 22); worksheet.set_column('E:E', 20)
-                worksheet.set_column('F:F', 8); worksheet.set_column('G:G', 25); worksheet.set_column('H:I', 18)
+                worksheet.set_column('A:B', 22); worksheet.set_column('C:D', 22); worksheet.set_column('E:E', 20); worksheet.set_column('F:F', 8); worksheet.set_column('G:G', 25); worksheet.set_column('H:I', 18)
                 
                 for row_num, row_data in enumerate(results, start=1):
                     worksheet.set_row(row_num, 20)
-                    
                     worksheet.write(row_num, 0, row_data["Complex File"], left_format)
                     worksheet.write_number(row_num, 1, float(row_data["E Complex (a.u.)"]), center_format)
-                    
                     if row_data["Is_First_In_Sheet"]:
                         worksheet.write(row_num, 2, row_data["Monomer 1 File"], left_format)
                         worksheet.write_number(row_num, 3, float(row_data["E Monomer 1 (a.u.)"]), center_format)
                     else:
-                        worksheet.write(row_num, 2, "", left_format)
-                        worksheet.write(row_num, 3, "", center_format)
-                        
+                        worksheet.write(row_num, 2, "", left_format); worksheet.write(row_num, 3, "", center_format)
                     if row_data["Is_First_In_Group"]:
                         worksheet.write(row_num, 4, row_data["Monomer 2 File"], left_format)
                         worksheet.write_number(row_num, 5, row_data["Qty"], center_format)
                         worksheet.write_number(row_num, 6, float(row_data["E Monomer 2 (single a.u.)"]), center_format)
                     else:
-                        worksheet.write(row_num, 4, "", left_format)
-                        worksheet.write(row_num, 5, "", center_format)
-                        worksheet.write(row_num, 6, "", center_format)
-                        
+                        worksheet.write(row_num, 4, "", left_format); worksheet.write(row_num, 5, "", center_format); worksheet.write(row_num, 6, "", center_format)
+                    
                     worksheet.write_number(row_num, 7, float(row_data["ΔE (a.u.)"]), center_format)
                     fmt = highlight_format if row_data["Is_Best"] else center_format
                     worksheet.write_number(row_num, 8, float(row_data["ΔE (kcal/mol)"]), fmt)
                             
                 workbook.close()
-                
                 st.session_state.results_ie = results
                 st.session_state.excel_data_ie = output.getvalue()
-                base_name = m1_file.name.split('.')[0]
-                st.session_state.download_name_ie = f"{base_name}_Universal_Energies.xlsx"
+                st.session_state.download_name_ie = f"{m1_file.name.split('.')[0]}_Energies.xlsx"
                 st.session_state.calc_done_ie = True
-                
                 st.rerun()
 
-    # --- SHOW TABLE AFTER CALCULATION ---
     if st.session_state.calc_done_ie:
         st.write("") 
         st.markdown('<p class="section-header" style="text-align: center; border: none; margin-top: 20px;">Tabulated Results</p>', unsafe_allow_html=True)
-        
         display_df = pd.DataFrame(st.session_state.results_ie).drop(columns=["Is_Best", "Is_First_In_Sheet", "Is_First_In_Group"])
-        for col in display_df.columns:
-            if "E " in col or "ΔE" in col: display_df[col] = display_df[col].astype(float)
-        
         def highlight_best(row):
-            idx = row.name
-            if st.session_state.results_ie[idx]["Is_Best"]:
-                return ['background-color: #FEF08A; color: #1F2937; font-weight: bold'] * len(row)
+            if st.session_state.results_ie[row.name]["Is_Best"]: return ['background-color: #FEF08A; color: #1F2937; font-weight: bold'] * len(row)
             return [''] * len(row)
-        
         styled_df = display_df.style.apply(highlight_best, axis=1).format(precision=6)
         st.dataframe(styled_df, use_container_width=True)
 
@@ -382,13 +347,7 @@ elif app_mode == "NBO E(2) Analysis":
                 if st.button("Run NBO Extraction", type="primary", use_container_width=True):
                     do_nbo_run = True
             with col_down:
-                st.download_button(
-                    label="Download NBO Report (.xlsx)", 
-                    data=st.session_state.excel_data_nbo, 
-                    file_name="NBO_Batch_Results.xlsx", 
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-                    use_container_width=True
-                )
+                st.download_button("Download NBO Report (.xlsx)", data=st.session_state.excel_data_nbo, file_name="NBO_Batch_Results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
     if do_nbo_run:
         if not nbo_files:
@@ -449,12 +408,10 @@ elif app_mode == "NBO E(2) Analysis":
                     
                     if file_extracted_data:
                         file_data_dict[basename] = file_extracted_data
-                        # Filter based on user selections before sorting
                         filtered = [r for r in file_extracted_data if r[1] in allowed_sections]
                         top_n_rows = sorted(filtered, key=lambda r: r[4], reverse=True)[:top_n]
                         all_top_n_data.extend(top_n_rows)
 
-                # --- EXCEL GENERATION ---
                 output = io.BytesIO()
                 workbook = xlsxwriter.Workbook(output, {'in_memory': True})
                 
@@ -463,7 +420,6 @@ elif app_mode == "NBO E(2) Analysis":
                 left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
                 section_format = workbook.add_format({'bold': True, 'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
 
-                # Tab 1: Top N
                 if all_top_n_data:
                     ws_top = workbook.add_worksheet(f'Top {top_n} Interactions')
                     top_n_columns = ["System", "Interaction Section", "Donor NBO (i)", "Acceptor NBO (j)", "E(2) kcal/mol", "E(j)-E(i) a.u.", "F(i,j) a.u."]
@@ -476,7 +432,6 @@ elif app_mode == "NBO E(2) Analysis":
                         for col_num in range(4): ws_top.write(row_num, col_num, row_data[col_num], left_format)
                         for col_num in range(4, 7): ws_top.write_number(row_num, col_num, row_data[col_num], center_format)
 
-                # Subsequent Tabs
                 indiv_columns = ["Donor NBO (i)", "Acceptor NBO (j)", "E(2) kcal/mol", "E(j)-E(i) a.u.", "F(i,j) a.u."]
                 for basename, data_rows in file_data_dict.items():
                     sheet_name = basename[:31] 
