@@ -34,7 +34,7 @@ systems_data = []
 
 for i in range(num_systems):
     with st.container():
-        st.markdown(f"#### System Group {i+1}")
+        st.markdown(f"#### System Type {i+1}")
         col1, col2, col3 = st.columns([2, 1, 3])
         
         with col1:
