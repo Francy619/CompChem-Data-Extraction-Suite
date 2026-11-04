@@ -258,11 +258,17 @@ elif app_mode == "LED Analysis":
     for i in range(num_led_systems):
         with st.container(border=True):
             st.markdown(f"**System {i+1} Configuration**")
-            sys_name = st.text_input(f"System Name (e.g. AspartcAcd - Water)", key=f"led_sys_name_{i}")
+            
+            d_file = st.file_uploader(f"Upload Dimer/Complex File", type=["log", "out"], key=f"led_dimer_{i}")
+            
+            if d_file:
+                sys_name = os.path.splitext(d_file.name)[0]
+                st.success(f"System Name auto-detected: **{sys_name}**")
+            else:
+                sys_name = f"System_{i+1}"
             
             col1, col2 = st.columns(2)
             with col1:
-                # Monomer 1 logic
                 if i == 0:
                     m1_file = st.file_uploader(f"Upload Monomer 1", type=["log", "out"], key=f"led_m1_{i}")
                     global_m1 = m1_file
@@ -279,8 +285,6 @@ elif app_mode == "LED Analysis":
             with col2:
                 m2_file = st.file_uploader(f"Upload Monomer 2", type=["log", "out"], key=f"led_m2_{i}")
                 f2_file = st.file_uploader(f"Upload Fragment 2 (Dimer geometry)", type=["log", "out"], key=f"led_f2_{i}")
-            
-            d_file = st.file_uploader(f"Upload Dimer/Complex", type=["log", "out"], key=f"led_dimer_{i}")
             
             led_inputs.append({"System_Name": sys_name, "m1": m1_file, "m2": m2_file, "f1": f1_file, "f2": f2_file, "d": d_file})
 
