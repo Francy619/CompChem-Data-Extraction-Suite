@@ -51,23 +51,17 @@ st.markdown("""
     button[kind="secondary"]:hover { background-color: #E2E8F0 !important; color: #1E293B !important; border-color: #94A3B8 !important; }
 </style>
 """, unsafe_allow_html=True)
-# ==========================================
-# 3. SIDEBAR NAVIGATION & BRANDING
-# ==========================================
-# --- Add Institutional Logos Side-by-Side (Stamp Size & Centered) ---
-# We use spacer columns (col1 and col4) to push the logos to the center
-col1, col2, col3, col4 = st.sidebar.columns([1, 1, 1, 1])
 
+# ==========================================
+# 3. SIDEBAR NAVIGATION
+# ==========================================
+col1, col2 = st.sidebar.columns(2)
+with col1:
+    try: st.image("logo1.png", use_container_width=True)
+    except Exception: pass
 with col2:
-    try: 
-        st.image("logo1.png", width=60) # Width set to ~stamp size
-    except Exception: 
-        pass
-with col3:
-    try: 
-        st.image("logo2.png", width=60) # Width set to ~stamp size
-    except Exception: 
-        pass
+    try: st.image("logo2.png", use_container_width=True)
+    except Exception: pass
 
 st.sidebar.markdown("---")
 st.sidebar.markdown('<p class="sidebar-title">📊 Dashboard</p>', unsafe_allow_html=True)
@@ -89,7 +83,6 @@ with st.sidebar.expander("ℹ️ About & Instructions"):
     st.markdown("""
     **Developed by:** Francis Thomas  
     **Institution:** St. Dominic's College, Kanjirapally  
-    """)
     """)
 
 # ==========================================
