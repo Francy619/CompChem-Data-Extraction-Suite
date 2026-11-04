@@ -153,4 +153,72 @@ if calc_btn:
             worksheet.set_column('C:D', 22)
             worksheet.set_column('E:E', 20)
             worksheet.set_column('F:F', 8)  # Qty column
-            worksheet.set_column('G:G', 2
+            worksheet.set_column('G:G', 25) # E Monomer 2 column
+            worksheet.set_column('H:I', 18)
+            
+            for row_num, row_data in enumerate(results, start=1):
+                worksheet.set_row(row_num, 20)
+                
+                worksheet.write(row_num, 0, row_data["Complex File"], left_format)
+                worksheet.write_number(row_num, 1, float(row_data["E Complex (a.u.)"]), center_format)
+                
+                if row_data["Is_First_In_Sheet"]:
+                    worksheet.write(row_num, 2, row_data["Amino Acid File"], left_format)
+                    worksheet.write_number(row_num, 3, float(row_data["E Amino Acid (a.u.)"]), center_format)
+                else:
+                    worksheet.write(row_num, 2, "", left_format)
+                    worksheet.write(row_num, 3, "", center_format)
+                    
+                if row_data["Is_First_In_Group"]:
+                    worksheet.write(row_num, 4, row_data["Solvent File"], left_format)
+                    worksheet.write_number(row_num, 5, row_data["Qty"], center_format)
+                    worksheet.write_number(row_num, 6, float(row_data["E Solvent (single a.u.)"]), center_format)
+                else:
+                    worksheet.write(row_num, 4, "", left_format)
+                    worksheet.write(row_num, 5, "", center_format)
+                    worksheet.write(row_num, 6, "", center_format)
+                    
+                worksheet.write_number(row_num, 7, float(row_data["ΔE (a.u.)"]), center_format)
+                
+                fmt = highlight_format if row_data["Is_Best"] else center_format
+                worksheet.write_number(row_num, 8, float(row_data["ΔE (kcal/mol)"]), fmt)
+                        
+            workbook.close()
+            
+            # --- SAVE TO SESSION STATE ---
+            st.session_state.results = results
+            st.session_state.excel_data = output.getvalue()
+            
+            base_name = m1_file.name.split('.')[0]
+            st.session_state.download_name = f"{base_name}_Universal_Energies.xlsx"
+            st.session_state.calc_done = True
+
+# --- SHOW TABLE AND DOWNLOAD BUTTON AFTER CALCULATION ---
+if st.session_state.calc_done:
+    # 1. Place Download button next to Calculate button in the centered columns layout
+    with col_down:
+        st.download_button(
+            label="📥 Download Excel File",
+            data=st.session_state.excel_data,
+            file_name=st.session_state.download_name,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="secondary"
+        )
+    
+    st.write("") # Spacer
+    st.markdown("### 📊 Data Tabulation")
+    
+    # 2. Render Data Table directly below
+    display_df = pd.DataFrame(st.session_state.results).drop(columns=["Is_Best", "Is_First_In_Sheet", "Is_First_In_Group"])
+    for col in display_df.columns:
+        if "E " in col or "ΔE" in col:
+            display_df[col] = display_df[col].astype(float)
+    
+    def highlight_best(row):
+        idx = row.name
+        if st.session_state.results[idx]["Is_Best"]:
+            return ['background-color: #FFFF00; color: black'] * len(row)
+        return [''] * len(row)
+    
+    styled_df = display_df.style.apply(highlight_best, axis=1).format(precision=6)
+    st.dataframe(styled_df, use_container_width=True)
