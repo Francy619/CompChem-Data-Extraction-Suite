@@ -5,6 +5,7 @@ import xlsxwriter
 import io
 from decimal import Decimal
 import pandas as pd
+import streamlit.components.v1 as components
 
 HARTREE_TO_KCAL = Decimal('627.509')
 
@@ -16,7 +17,6 @@ def extract_energy(uploaded_file, is_bsse=False):
     uploaded_file.seek(0)
     content = uploaded_file.read().decode('utf-8')
     if is_bsse:
-        # The colon has been completely removed as requested
         matches = re.findall(r'Counterpoise\s*corrected\s*energy\s*=\s*([-+]?\d*\.\d+)', content, re.IGNORECASE)
         return Decimal(matches[-1]) if matches else None
     else:
@@ -56,7 +56,7 @@ def extract_led_values(uploaded_file, target_strings):
 st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
 # ---------------------------------------------------------
-# CRITICAL FIX: Initialize Session State HERE, before anything else
+# CRITICAL FIX: Initialize Session State before rendering
 # ---------------------------------------------------------
 if 'app_mode' not in st.session_state: 
     st.session_state.app_mode = "Home"
@@ -129,8 +129,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # JavaScript injection to aggressively remove iframe footers
-import streamlit.components.v1 as components
-
 components.html("""
     <script>
         const removeFooter = setInterval(() => {
@@ -361,10 +359,19 @@ elif st.session_state.app_mode == "Interaction Energy":
 
     if st.session_state.calc_done_ie:
         st.markdown('<p class="section-header" style="text-align: center; border: none;">Tabulated Results</p>', unsafe_allow_html=True)
+        
         display_df = pd.DataFrame(st.session_state.results_ie).drop(columns=["Is_Best", "Is_First_In_Sheet", "Is_First_In_Group"])
+        
+        # Convert Decimal columns to standard floats to prevent display glitch in Streamlit UI
+        cols_to_float = ["E Complex (a.u.)", "E Monomer 1 (a.u.)", "E Monomer 2 (single a.u.)", "ΔE (a.u.)", "ΔE (kcal/mol)"]
+        for col in cols_to_float:
+            if col in display_df.columns:
+                display_df[col] = pd.to_numeric(display_df[col], errors='coerce')
+                
         def highlight_best(row):
             if st.session_state.results_ie[row.name]["Is_Best"]: return ['background-color: #FEF08A; color: #1F2937; font-weight: bold'] * len(row)
             return [''] * len(row)
+            
         styled_df = display_df.style.apply(highlight_best, axis=1).format(precision=6)
         st.dataframe(styled_df, use_container_width=True)
 
