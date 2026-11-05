@@ -1000,7 +1000,7 @@ elif st.session_state.app_mode == "Structural Analysis":
                     st.caption("Monomer 1 Bonds:")
                     for b, bdata in enumerate(m1_bond_data):
                         if bdata["name"]: 
-                            # Pre-fill atoms from Monomer 1 for easy editing
+                            # HERE IS THE MAGIC FIX: value=bdata["atoms_str"] pre-fills the box instantly!
                             d_atm = st.text_input(f"{bdata['name']} atoms:", value=bdata["atoms_str"], key=f"c{i}_m1b_{b}")
                             m1_d_atoms.append({"name": bdata["name"], "atoms_str": d_atm})
                             
@@ -1009,7 +1009,7 @@ elif st.session_state.app_mode == "Structural Analysis":
                     st.caption("Monomer 2 Bonds:")
                     for b, bdata in enumerate(m2_bond_data):
                         if bdata["name"]: 
-                            # Pre-fill atoms from Monomer 2
+                            # Pre-fill atoms from Monomer 2 as well
                             d_atm = st.text_input(f"{bdata['name']} atoms:", value=bdata["atoms_str"], key=f"c{i}_m2b_{b}")
                             m2_d_atoms.append({"name": bdata["name"], "atoms_str": d_atm})
                             
