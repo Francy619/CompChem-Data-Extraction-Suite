@@ -71,7 +71,6 @@ st.markdown("""
 
 # JavaScript injection to aggressively remove iframe footers
 import streamlit.components.v1 as components
-
 components.html("""
     <script>
         const removeFooter = setInterval(() => {
