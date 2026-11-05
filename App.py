@@ -279,7 +279,7 @@ elif st.session_state.app_mode == "Interaction Energy":
             st.error("Please upload Monomer 1.")
         else:
             with st.spinner("Processing..."):
-                st.session_state.warnings_ie = [] # Reset warnings
+                st.session_state.warnings_ie = [] 
                 
                 e_m1 = extract_energy(m1_file, is_bsse=False)
                 if e_m1 is None: 
@@ -462,7 +462,7 @@ elif st.session_state.app_mode == "LED Analysis":
 
     if do_led_calc:
         with st.spinner("Parsing Orca outputs..."):
-            st.session_state.warnings_led = [] # Reset warnings
+            st.session_state.warnings_led = []
             
             base_energy = ["FINAL SINGLE POINT ENERGY"]
             triples_term = ["Triples Correction (T)"] 
@@ -502,7 +502,6 @@ elif st.session_state.app_mode == "LED Analysis":
                         data = {"Filename": fileobj.name, "Type": ftype}
                         extracted = extract_led_values(fileobj, terms)
                         
-                        # LED Error validation for ALL expected terms dynamically
                         for term in terms:
                             if term == "Intra REF. energy":
                                 if "Intra REF. energy of Fragment 1" not in extracted or "Intra REF. energy of Fragment 2" not in extracted:
@@ -673,7 +672,7 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
         if not nbo_files:
             st.error("Please upload NBO files.")
         else:
-            st.session_state.warnings_nbo = [] # Reset warnings
+            st.session_state.warnings_nbo = [] 
             
             file_data_dict = {}
             all_top_n_data = []
@@ -705,7 +704,6 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
                                 if not any(term in donor_fmt for term in ["RY*", "CR"]) and not any(term in acceptor_fmt for term in ["RY*", "CR"]):
                                     file_extracted_data.append([basename, current_section, donor_fmt, acceptor_fmt, float(right_tokens[-3]), float(right_tokens[-2]), float(right_tokens[-1])])
                 
-                # NBO Error validation
                 if not found_perturbation:
                     st.session_state.warnings_nbo.append(f"Perturbation table is not found in {uploaded_file.name}.")
                 elif not file_extracted_data:
@@ -724,7 +722,6 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
             header_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
-            section_format = workbook.add_format({'bold': True, 'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             if all_top_n_data:
                 ws_top = workbook.add_worksheet(f'Top {top_n} Interactions')
                 top_n_columns = ["System", "Interaction Section", "Donor NBO (i)", "Acceptor NBO (j)", "E(2) kcal/mol", "E(j)-E(i) a.u.", "F(i,j) a.u."]
@@ -793,7 +790,7 @@ elif st.session_state.app_mode == "QTAIM Analysis":
                 st.download_button("Download QTAIM Report (.xlsx)", data=st.session_state.excel_data_qtaim, file_name="QTAIM_Results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
     if do_qtaim_run:
-        st.session_state.warnings_qtaim = [] # Reset warnings
+        st.session_state.warnings_qtaim = []
         
         search_terms = {"Density of all electrons": "Density of all electrons:", "Laplacian of electron density": "Laplacian of electron density:", "Potential energy density V(r)": "Potential energy density V(r):", "Lagrangian kinetic energy G(r)": "Lagrangian kinetic energy G(r):", "Energy density E(r) or H(r)": "Energy density E(r) or H(r):"}
         all_extracted_data = []
@@ -830,7 +827,6 @@ elif st.session_state.app_mode == "QTAIM Analysis":
                             except: cp_data[key] = None
             if current_cp in target_cps and cp_data: extracted_data.append(cp_data)
             
-            # QTAIM Error validation
             if not extracted_data:
                 st.session_state.warnings_qtaim.append(f"Target Critical Points ({item['cp_str']}) and their properties are not found in {uploaded_file.name}.")
             else:
@@ -906,7 +902,7 @@ elif st.session_state.app_mode == "Structural Analysis":
             st.session_state.app_mode = "Home"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="main-header-container"><div class="main-title">📏 Structural & Vibrational Analysis</div><div class="sub-title">Track bond lengths and stretching frequencies from Gaussian log files.</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header-container"><div class="main-title">📏 Structural & Vibrational Value Analysis</div><div class="sub-title">Track bond lengths and stretching frequencies from Gaussian log files.</div></div>', unsafe_allow_html=True)
     
     # --- HELPER FUNCTIONS FOR THIS MODULE ---
     def get_optimized_coords(content):
@@ -957,7 +953,11 @@ elif st.session_state.app_mode == "Structural Analysis":
 
     # --- UI LAYOUT ---
     st.sidebar.markdown("### Settings")
-    scaling_factor = st.sidebar.number_input("Frequency Scaling Factor", value=0.9594, format="%.4f")
+    need_scaling = st.sidebar.radio("Apply Frequency Scaling?", ["No", "Yes"], index=1)
+    
+    scaling_factor = None
+    if need_scaling == "Yes":
+        scaling_factor = st.sidebar.number_input("Enter Scaling Factor:", value=0.9594, format="%.4f")
     
     st.markdown('<p class="section-header">1. Primary System (Monomer 1)</p>', unsafe_allow_html=True)
     with st.container(border=True):
@@ -969,7 +969,7 @@ elif st.session_state.app_mode == "Structural Analysis":
             for b in range(m1_bonds):
                 c_name, c_atoms = st.columns([2, 2])
                 with c_name: b_name = st.text_input(f"Bond {b+1} Name (e.g., O-H, C=O)", key=f"m1_bname_{b}")
-                with c_atoms: b_atoms = st.text_input(f"Atoms (e.g., 1, 17)", key=f"m1_batoms_{b}")
+                with c_atoms: b_atoms = st.text_input(f"Atom Numbers (e.g., 1, 17)", key=f"m1_batoms_{b}")
                 m1_bond_data.append({"name": b_name, "atoms_str": b_atoms})
 
     st.write("")
@@ -988,7 +988,7 @@ elif st.session_state.app_mode == "Structural Analysis":
                 for b in range(m2_bonds):
                     c_n, c_a = st.columns([2, 2])
                     with c_n: bn = st.text_input(f"Bond {b+1} Name", key=f"m2_n_{i}_{b}")
-                    with c_a: ba = st.text_input(f"Atoms", key=f"m2_a_{i}_{b}")
+                    with c_a: ba = st.text_input(f"Atom Numbers", key=f"m2_a_{i}_{b}")
                     m2_bond_data.append({"name": bn, "atoms_str": ba})
                     
             with c_comp:
@@ -1000,7 +1000,6 @@ elif st.session_state.app_mode == "Structural Analysis":
                     st.caption("Monomer 1 Bonds:")
                     for b, bdata in enumerate(m1_bond_data):
                         if bdata["name"]: 
-                            # HERE IS THE MAGIC FIX: value=bdata["atoms_str"] pre-fills the box instantly!
                             d_atm = st.text_input(f"{bdata['name']} atoms:", value=bdata["atoms_str"], key=f"c{i}_m1b_{b}")
                             m1_d_atoms.append({"name": bdata["name"], "atoms_str": d_atm})
                             
@@ -1009,7 +1008,6 @@ elif st.session_state.app_mode == "Structural Analysis":
                     st.caption("Monomer 2 Bonds:")
                     for b, bdata in enumerate(m2_bond_data):
                         if bdata["name"]: 
-                            # Pre-fill atoms from Monomer 2 as well
                             d_atm = st.text_input(f"{bdata['name']} atoms:", value=bdata["atoms_str"], key=f"c{i}_m2b_{b}")
                             m2_d_atoms.append({"name": bdata["name"], "atoms_str": d_atm})
                             
@@ -1037,10 +1035,9 @@ elif st.session_state.app_mode == "Structural Analysis":
                 st.download_button("Download Analysis (.xlsx)", data=st.session_state.excel_data_struct, file_name="Vibrational_Analysis.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
     if do_struct_run:
-        st.session_state.warnings_struct = [] # Reset warnings
+        st.session_state.warnings_struct = [] 
         extracted_rows = []
         
-        # Determine all unique column headers based on user bonds across all systems to group them properly
         all_bond_names = []
         for bd in m1_bond_data:
             if bd["name"] and bd["name"] not in all_bond_names: all_bond_names.append(bd["name"])
@@ -1064,7 +1061,6 @@ elif st.session_state.app_mode == "Structural Analysis":
             if freq is None: st.session_state.warnings_struct.append(f"Stretching frequency for '{name}' not found in {file_name}.")
             return dist, freq
 
-        # 1. Process Monomer 1 (Base System)
         m1_name = "Monomer_1"
         if m1_file:
             m1_file.seek(0)
@@ -1077,7 +1073,6 @@ elif st.session_state.app_mode == "Structural Analysis":
                     row_data[bd["name"]] = {"dist": dist, "freq": freq}
             extracted_rows.append(row_data)
 
-        # 2. Process Secondary Systems (M2 and Complexes)
         base_m1 = re.split(r'[_ -]|site', m1_name, flags=re.IGNORECASE)[0]
         
         for idx, comp in enumerate(systems_input):
@@ -1087,7 +1082,6 @@ elif st.session_state.app_mode == "Structural Analysis":
             c_name = os.path.splitext(c_file.name)[0] if c_file else f"Complex_{idx+1}"
             m2_name = os.path.splitext(m2_file.name)[0] if m2_file else f"M2_{idx+1}"
             
-            # Row: M1 inside the Complex
             if c_file:
                 c_file.seek(0)
                 c_content = c_file.read().decode('utf-8')
@@ -1099,7 +1093,6 @@ elif st.session_state.app_mode == "Structural Analysis":
                         row_data_comp[bd["name"]] = {"dist": dist, "freq": freq}
                 extracted_rows.append(row_data_comp)
             
-            # Row: Isolated M2
             if m2_file:
                 m2_file.seek(0)
                 m2_content = m2_file.read().decode('utf-8')
@@ -1110,7 +1103,6 @@ elif st.session_state.app_mode == "Structural Analysis":
                         row_data_m2[bd["name"]] = {"dist": dist, "freq": freq}
                 extracted_rows.append(row_data_m2)
                 
-            # Row: M2 inside the Complex
             if c_file and comp["c_m2_bonds"]:
                 row_data_c_solv = {"System": f"{m2_name} ({c_name})"}
                 has_m2_bonds = False
@@ -1125,7 +1117,6 @@ elif st.session_state.app_mode == "Structural Analysis":
             st.error("No valid data could be extracted.")
             st.stop()
             
-        # 3. Export to Excel
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
         worksheet = workbook.add_worksheet('Frequencies')
@@ -1133,17 +1124,17 @@ elif st.session_state.app_mode == "Structural Analysis":
         center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
         left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
         
-        # Build headers
         columns = ["System"]
         for b_name in all_bond_names:
-            columns.extend([f"Bond Length (A) {b_name}", f"{b_name} Freq", f"Scaled {b_name}"])
+            columns.extend([f"Bond Length (A) {b_name}", f"{b_name} Freq"])
+            if scaling_factor is not None:
+                columns.append(f"Scaled {b_name}")
             
         worksheet.set_row(0, 20)
         for col_num, header in enumerate(columns): worksheet.write(0, col_num, header, header_format)
         worksheet.set_column('A:A', 30, left_format)
         if len(columns) > 1: worksheet.set_column(1, len(columns)-1, 20, center_format)
         
-        # Write data row by row
         for row_num, row_dict in enumerate(extracted_rows, start=1):
             worksheet.set_row(row_num, 20)
             worksheet.write(row_num, 0, row_dict.get("System", ""), left_format)
@@ -1156,14 +1147,20 @@ elif st.session_state.app_mode == "Structural Analysis":
                 
                 worksheet.write(row_num, col_idx, float(dist) if dist else "", center_format)
                 worksheet.write(row_num, col_idx+1, float(freq) if freq else "", center_format)
-                worksheet.write(row_num, col_idx+2, float(freq * scaling_factor) if freq else "", center_format)
-                col_idx += 3
+                
+                if scaling_factor is not None:
+                    worksheet.write(row_num, col_idx+2, float(freq * scaling_factor) if freq else "", center_format)
+                    col_idx += 3
+                else:
+                    col_idx += 2
                 
         workbook.close()
         
         st.session_state.extracted_rows_struct = extracted_rows
         st.session_state.bond_names_struct = all_bond_names
         st.session_state.excel_data_struct = output.getvalue()
+        # Save scaling factor state for table rendering on rerun
+        st.session_state.applied_scaling_factor = scaling_factor 
         st.session_state.calc_done_struct = True
         st.rerun()
 
@@ -1171,7 +1168,6 @@ elif st.session_state.app_mode == "Structural Analysis":
         for w in st.session_state.warnings_struct: st.warning(w)
         st.markdown('<p class="section-header" style="text-align: center; border: none;">Tabulated Results</p>', unsafe_allow_html=True)
         
-        # Format DataFrame for UI Display
         df_data = []
         for row in st.session_state.extracted_rows_struct:
             flat_row = {"System": row["System"]}
@@ -1179,7 +1175,8 @@ elif st.session_state.app_mode == "Structural Analysis":
                 b_data = row.get(b_name, {})
                 flat_row[f"Bond Length (A) {b_name}"] = b_data.get("dist")
                 flat_row[f"{b_name} Freq"] = b_data.get("freq")
-                flat_row[f"Scaled {b_name}"] = b_data.get("freq") * scaling_factor if b_data.get("freq") else None
+                if st.session_state.applied_scaling_factor is not None:
+                    flat_row[f"Scaled {b_name}"] = b_data.get("freq") * st.session_state.applied_scaling_factor if b_data.get("freq") else None
             df_data.append(flat_row)
             
         display_df = pd.DataFrame(df_data)
