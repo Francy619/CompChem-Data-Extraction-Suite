@@ -56,17 +56,6 @@ st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide"
 
 st.markdown("""
 <style>
-    /* --- NEW: Hide Streamlit Branding & Overlays --- */
-    /* 1. Hide the 'Made with Streamlit' footer completely */
-    footer {visibility: hidden !important;}
-    
-    /* 2. Hide the 'View fullscreen' button that appears over dataframes */
-    button[title="View fullscreen"] {display: none !important;}
-    
-    /* 3. Hide the top-right header menu (Hamburger & Deploy buttons) */
-    header {visibility: hidden !important;}
-    /* ----------------------------------------------- */
-
     /* Hide sidebar completely for full screen feel */
     [data-testid="collapsedControl"] { display: none; }
     
@@ -101,25 +90,12 @@ st.markdown("""
         border-color: #1E3A8A !important;
         color: #1E3A8A !important;
     }
-    
-    /* Force File Uploader Elements into a Single Horizontal Row */
-    [data-testid="stFileUploaderDropzone"] > div {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        flex-wrap: nowrap !important;
-        gap: 10px !important;
-        padding: 10px !important;
-    }
-    
-    /* Prevent the helper text from breaking into multiple lines */
-    [data-testid="stFileUploaderDropzone"] small {
-        white-space: nowrap !important;
-        margin-top: 0 !important;
-        font-size: 0.85rem !important;
-    }
 </style>
 """, unsafe_allow_html=True)
+
+# Initialize Session State
+if 'app_mode' not in st.session_state: st.session_state.app_mode = "Home"
+
 # ==========================================
 # 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
