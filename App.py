@@ -1,53 +1,85 @@
-import streamlit as st
-import os
-import re
-import xlsxwriter
-import io
-from decimal import Decimal
-import pandas as pd
-
-HARTREE_TO_KCAL = Decimal('627.509')
-
 # ==========================================
-# 1. HELPER FUNCTIONS
+# 2. PAGE CONFIG & CSS (Global)
 # ==========================================
-def extract_energy(uploaded_file, is_bsse=False):
-    if uploaded_file is None: return None
-    uploaded_file.seek(0)
-    content = uploaded_file.read().decode('utf-8')
-    if is_bsse:
-        matches = re.findall(r'Counterpoise:\s*corrected\s*energy\s*=\s*([-+]?\d*\.\d+)', content, re.IGNORECASE)
-        return Decimal(matches[-1]) if matches else None
-    else:
-        stitched = re.sub(r'[\r\n]+ ', '', content)
-        matches = re.findall(r'HF=([-+]?\d*\.\d+|\d+)', stitched)
-        return Decimal(matches[-1]) if matches else None
+st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-def format_nbo(text):
-    text = re.sub(r'^\s*\d+\.\s*', '', text)
-    text = re.sub(r'\(\s+', '(', text)
-    text = re.sub(r'\s+\)', ')', text)
-    text = re.sub(r'([A-Za-z\*]+)\s+(\d+)', r'\1\2', text)
-    text = re.sub(r'\s{2,}', ' ', text)
-    return text.strip()
+st.markdown("""
+<style>
+    /* --- Hide Streamlit Branding & Overlays --- */
+    footer, [data-testid="stFooter"], .stStatusWidget {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        max-height: 0px !important;
+    }
+    button[title="View fullscreen"] { display: none !important; }
+    header { visibility: hidden !important; display: none !important; }
+    
+    /* Hide sidebar completely for full screen feel */
+    [data-testid="collapsedControl"] { display: none; }
+    
+    .main-header-container { text-align: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #E2E8F0; }
+    .main-title { font-size: 3.2rem; color: #1E3A8A; font-weight: 800; margin-bottom: 5px; font-family: 'Segoe UI', sans-serif; }
+    .sub-title { font-size: 1.1rem; color: #4B5563; font-family: 'Segoe UI', sans-serif; }
+    .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
+    
+    /* Global Action Buttons (Primary) - NORMAL SIZE */
+    button[kind="primary"] { 
+        background-color: #1E3A8A !important; 
+        color: #FFFFFF !important; 
+        border: none !important; 
+        border-radius: 6px !important; 
+        font-weight: 700 !important; 
+        padding: 8px 16px !important; 
+        transition: all 0.3s ease-in-out !important; 
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; 
+    }
+    button[kind="primary"]:hover { 
+        background-color: #2563EB !important; 
+        transform: translateY(-2px); 
+    }
+    
+    /* Global Secondary Buttons (Upload, Back to Home) - NORMAL SIZE */
+    button[kind="secondary"] {
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    button[kind="secondary"]:hover {
+        border-color: #1E3A8A !important;
+        color: #1E3A8A !important;
+    }
+    
+    /* Force File Uploader Elements into a Single Horizontal Row */
+    [data-testid="stFileUploaderDropzone"] > div {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+        gap: 10px !important;
+        padding: 10px !important;
+    }
+    
+    /* Prevent the helper text from breaking into multiple lines */
+    [data-testid="stFileUploaderDropzone"] small {
+        white-space: nowrap !important;
+        margin-top: 0 !important;
+        font-size: 0.85rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-def extract_led_values(uploaded_file, target_strings):
-    extracted = {}
-    if uploaded_file is None: return extracted
-    uploaded_file.seek(0)
-    lines = uploaded_file.read().decode('utf-8').splitlines()
-    for line in lines:
-        for term in target_strings:
-            if term.lower() in line.lower():
-                if term.lower().startswith("dispersion") and "non" in line.lower(): continue
-                parts = line.strip().split()
-                try:
-                    if term == "Intra REF. energy":
-                        extracted["Intra REF. energy of Fragment 1"] = Decimal(parts[3])
-                        extracted["Intra REF. energy of Fragment 2"] = Decimal(parts[4])
-                    else: extracted[term] = Decimal(parts[-1])
-                except (ValueError, IndexError): continue
-    return extracted
+# JavaScript injection to aggressively remove iframe footers
+import streamlit.components.v1 as components
+
+components.html("""
+    <script>
+        const removeFooter = setInterval(() => {
+            const footer = window.parent.document.querySelectorAll('footer, [data-testid="stFooter"]');
+            footer.forEach(el => el.style.display = 'none');
+        }, 500);
+    </script>
+""", height=0)
 
 # ==========================================
 # 2. PAGE CONFIG & CSS (Global)
