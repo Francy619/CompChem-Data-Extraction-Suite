@@ -119,6 +119,22 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# JavaScript injection to aggressively remove iframe footers
+import streamlit.components.v1 as components
+
+components.html("""
+    <script>
+        const removeFooter = setInterval(() => {
+            const footer = window.parent.document.querySelectorAll('footer, [data-testid="stFooter"]');
+            footer.forEach(el => el.style.display = 'none');
+        }, 500);
+    </script>
+""", height=0)
+
+# Initialize Session State
+if 'app_mode' not in st.session_state: st.session_state.app_mode = "Home"
+
 # ==========================================
 # 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
@@ -189,6 +205,7 @@ if st.session_state.app_mode == "Home":
         Automated tools for parsing outputs from Gaussian, ORCA, and Multiwfn.
     </div>
     """, unsafe_allow_html=True)
+
 # ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
 # ==========================================
