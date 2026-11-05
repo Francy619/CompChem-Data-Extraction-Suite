@@ -162,7 +162,7 @@ if st.session_state.app_mode == "Home":
             border: none !important; 
             border-radius: 8px !important; 
             font-weight: 800 !important; 
-            font-size: 2.4rem !important; 
+            font-size: 4.4rem !important; 
             min-height: 100px !important;
             padding: 30px 20px !important; 
             box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important;
