@@ -163,7 +163,7 @@ if st.session_state.app_mode == "Home":
             border-radius: 12px !important; 
             font-weight: 800 !important; 
             font-size: 1.4rem !important; 
-            min-height: 140px !important;
+            min-height: 100px !important;
             padding: 30px 20px !important; 
             box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important;
         }
