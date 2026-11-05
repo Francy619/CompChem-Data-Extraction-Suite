@@ -54,30 +54,25 @@ def extract_led_values(uploaded_file, target_strings):
 # ==========================================
 st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
+# ---------------------------------------------------------
+# CRITICAL FIX: Initialize Session State HERE, before anything else
+# ---------------------------------------------------------
+if 'app_mode' not in st.session_state: 
+    st.session_state.app_mode = "Home"
+# ---------------------------------------------------------
+
 st.markdown("""
 <style>
-    /* --- NEW: Hide Streamlit Branding & Overlays --- */
-    /* 1. Hide the 'Made with Streamlit' footer completely */
-    footer {visibility: hidden !important;}
-    
-    /* 2. Hide the 'View fullscreen' button that appears over dataframes */
-    button[title="View fullscreen"] {display: none !important;}
-    
-    /* 3. Hide the top-right header menu (Hamburger & Deploy buttons) */
-    header {visibility: hidden !important;}
-st.markdown("""
-<style>
-    /* Forcefully hide the Streamlit footer and status widget */
+    /* --- Hide Streamlit Branding & Overlays --- */
     footer, [data-testid="stFooter"], .stStatusWidget {
         display: none !important;
         visibility: hidden !important;
         height: 0px !important;
         max-height: 0px !important;
     }
-</style>
-""", unsafe_allow_html=True)
-    /* ----------------------------------------------- */
-
+    button[title="View fullscreen"] { display: none !important; }
+    header { visibility: hidden !important; display: none !important; }
+    
     /* Hide sidebar completely for full screen feel */
     [data-testid="collapsedControl"] { display: none; }
     
@@ -131,11 +126,24 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# JavaScript injection to aggressively remove iframe footers
+import streamlit.components.v1 as components
+
+components.html("""
+    <script>
+        const removeFooter = setInterval(() => {
+            const footer = window.parent.document.querySelectorAll('footer, [data-testid="stFooter"]');
+            footer.forEach(el => el.style.display = 'none');
+        }, 500);
+    </script>
+""", height=0)
+
+
 # ==========================================
 # 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
-if st.session_state.app_mode == "Home":
-    
+if st.session_state.app_mode == "Home":    
     # Inject MASSIVE button CSS *only* for the Home Page
     st.markdown("""
     <style>
