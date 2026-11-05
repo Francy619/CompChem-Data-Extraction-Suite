@@ -276,7 +276,7 @@ elif st.session_state.app_mode == "Interaction Energy":
             with st.spinner("Processing..."):
                 e_m1 = extract_energy(m1_file, is_bsse=False)
                 if e_m1 is None: 
-                    st.error(f"Could not extract HF= energy from Monomer 1 ({m1_file.name}).")
+                    st.error(f"HF= energy is not found in {m1_file.name}.")
                     st.stop()
                     
                 results = []
@@ -287,7 +287,7 @@ elif st.session_state.app_mode == "Interaction Energy":
                     
                     e_m2_single = extract_energy(sys["m2"], is_bsse=False) 
                     if e_m2_single is None: 
-                        st.error(f"Could not extract HF= energy from Monomer 2 ({sys['m2'].name}). Skipping system.")
+                        st.error(f"HF= energy is not found in {sys['m2'].name}. Skipping system.")
                         continue
                         
                     e_m2_total = e_m2_single * sys["multiplier"]
@@ -303,7 +303,10 @@ elif st.session_state.app_mode == "Interaction Energy":
                                 "E Monomer 2 (single a.u.)": e_m2_single, "ΔE (a.u.)": delta_au, "ΔE (kcal/mol)": delta_au * HARTREE_TO_KCAL
                             })
                         else:
-                            st.warning(f"Failed to extract energy from Complex file: {d_file.name}. Check file formatting.")
+                            if is_bsse:
+                                st.warning(f"Counterpoise corrected energy is not found in {d_file.name}.")
+                            else:
+                                st.warning(f"HF= energy is not found in {d_file.name}.")
                             
                     if group_results:
                         min_kcal = min(r["ΔE (kcal/mol)"] for r in group_results)
@@ -362,7 +365,6 @@ elif st.session_state.app_mode == "Interaction Energy":
         
         display_df = pd.DataFrame(st.session_state.results_ie).drop(columns=["Is_Best", "Is_First_In_Sheet", "Is_First_In_Group"])
         
-        # Convert Decimal columns to standard floats to prevent display glitch in Streamlit UI
         cols_to_float = ["E Complex (a.u.)", "E Monomer 1 (a.u.)", "E Monomer 2 (single a.u.)", "ΔE (a.u.)", "ΔE (kcal/mol)"]
         for col in cols_to_float:
             if col in display_df.columns:
@@ -485,7 +487,18 @@ elif st.session_state.app_mode == "LED Analysis":
                 for fileobj, ftype, terms in file_mapping:
                     if fileobj.name not in unique_extracted_data:
                         data = {"Filename": fileobj.name, "Type": ftype}
-                        data.update(extract_led_values(fileobj, terms))
+                        extracted = extract_led_values(fileobj, terms)
+                        
+                        # LED Error validation for ALL expected terms dynamically
+                        for term in terms:
+                            if term == "Intra REF. energy":
+                                if "Intra REF. energy of Fragment 1" not in extracted or "Intra REF. energy of Fragment 2" not in extracted:
+                                    st.warning(f"'{term}' is missing or incomplete in {fileobj.name}.")
+                            else:
+                                if term not in extracted:
+                                    st.warning(f"'{term}' is not found in {fileobj.name}.")
+                                    
+                        data.update(extracted)
                         unique_extracted_data[fileobj.name] = data
                     sys_dict_refs[ftype] = unique_extracted_data[fileobj.name]
                 
@@ -531,7 +544,7 @@ elif st.session_state.app_mode == "LED Analysis":
                 all_calculations.append(calc)
 
             if not all_calculations:
-                st.error("No valid data could be parsed.")
+                st.error("No valid LED data could be parsed. Check warnings above.")
                 st.session_state.calc_done_led = False
                 st.stop()
 
@@ -651,9 +664,13 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
                 basename = os.path.splitext(uploaded_file.name)[0]
                 file_extracted_data = []
                 in_target_section = False
+                found_perturbation = False
+                
                 for line in lines:
                     if "Second Order Perturbation Theory Analysis of Fock Matrix in NBO Basis" in line:
-                        in_target_section = True; continue
+                        in_target_section = True
+                        found_perturbation = True
+                        continue
                     if in_target_section:
                         if "Natural Bond Orbitals (Summary):" in line: break
                         line_stripped = line.strip()
@@ -668,10 +685,21 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
                                 acceptor_fmt = format_nbo(" ".join(right_tokens[1:-3]))
                                 if not any(term in donor_fmt for term in ["RY*", "CR"]) and not any(term in acceptor_fmt for term in ["RY*", "CR"]):
                                     file_extracted_data.append([basename, current_section, donor_fmt, acceptor_fmt, float(right_tokens[-3]), float(right_tokens[-2]), float(right_tokens[-1])])
-                if file_extracted_data:
+                
+                # NBO Error validation
+                if not found_perturbation:
+                    st.warning(f"Perturbation table is not found in {uploaded_file.name}.")
+                elif not file_extracted_data:
+                    st.warning(f"No valid donor-acceptor interactions extracted from {uploaded_file.name}.")
+                else:
                     file_data_dict[basename] = file_extracted_data
                     filtered = [r for r in file_extracted_data if r[1] in allowed_sections]
                     all_top_n_data.extend(sorted(filtered, key=lambda r: r[4], reverse=True)[:top_n])
+                    
+            if not all_top_n_data:
+                st.error("NBO extraction failed. No valid data found in the provided files.")
+                st.stop()
+                
             output = io.BytesIO()
             workbook = xlsxwriter.Workbook(output, {'in_memory': True})
             header_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
@@ -775,12 +803,20 @@ elif st.session_state.app_mode == "QTAIM Analysis":
                             try: cp_data[key] = float(line.split(term)[1].strip())
                             except: cp_data[key] = None
             if current_cp in target_cps and cp_data: extracted_data.append(cp_data)
-            for data in extracted_data:
-                density = data.get("Density of all electrons")
-                data["Binding Energy"] = (-223.08 * density) + 0.7423 if density is not None else None
-            if extracted_data:
+            
+            # QTAIM Error validation
+            if not extracted_data:
+                st.warning(f"Target Critical Points ({item['cp_str']}) and their properties are not found in {uploaded_file.name}.")
+            else:
+                for data in extracted_data:
+                    density = data.get("Density of all electrons")
+                    data["Binding Energy"] = (-223.08 * density) + 0.7423 if density is not None else None
                 extracted_data.sort(key=lambda x: x["CP Number"])
                 all_extracted_data.extend(extracted_data)
+
+        if not all_extracted_data:
+            st.error("QTAIM extraction failed. Check warnings above for missing data.")
+            st.stop()
 
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
