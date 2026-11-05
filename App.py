@@ -16,7 +16,7 @@ def extract_energy(uploaded_file, is_bsse=False):
     uploaded_file.seek(0)
     content = uploaded_file.read().decode('utf-8')
     if is_bsse:
-        matches = re.findall(r'Counterpoise:\s*corrected\s*energy\s*=\s*([-+]?\d*\.\d+)', content, re.IGNORECASE)
+        matches = re.findall(r'Counterpoise\s*corrected\s*energy\s*=\s*([-+]?\d*\.\d+)', content, re.IGNORECASE)
         return Decimal(matches[-1]) if matches else None
     else:
         stitched = re.sub(r'[\r\n]+ ', '', content)
