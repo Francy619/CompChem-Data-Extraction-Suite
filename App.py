@@ -179,7 +179,7 @@ if st.session_state.app_mode == "Home":
     st.markdown('<p class="menu-title">CompChem Data Extraction Suite</p>', unsafe_allow_html=True)
     st.write("")
     
-   # Centered 2x2 Grid for Buttons
+    # Centered 2x2 Grid for Buttons
     c_space_l, c_btn_1, c_btn_2, c_space_r = st.columns([1, 3, 3, 1])
     
     with c_btn_1:
@@ -203,6 +203,17 @@ if st.session_state.app_mode == "Home":
         if st.button("⭕ QTAIM Properties Tabulator", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "QTAIM Analysis"
             st.rerun()
+            
+    st.markdown("""
+    <div class="footer-text">
+        <strong>Developed by:</strong> Francis Thomas & Dr. Renjith Thomas <br>
+        <strong>Research Group:</strong> Centre for Theoretical and Computational Chemistry (CTCC) <br>
+        <strong>Institutions:</strong> St. Dominic's College, Kanjirapally & St. Berchmans College, Changanassery <br>
+        <br>
+        Automated tools for parsing outputs from Gaussian, ORCA, and Multiwfn.
+    </div>
+    """, unsafe_allow_html=True)
+
 # ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
 # ==========================================
@@ -882,6 +893,7 @@ elif st.session_state.app_mode == "QTAIM Analysis":
     if st.session_state.calc_done_qtaim:
         for w in st.session_state.warnings_qtaim:
             st.warning(w)
+
 # ==========================================
 # 8. APP MODE 5: STRUCTURAL & VIBRATIONAL ANALYSIS
 # ==========================================
@@ -947,63 +959,68 @@ elif st.session_state.app_mode == "Structural Analysis":
     st.sidebar.markdown("### Settings")
     scaling_factor = st.sidebar.number_input("Frequency Scaling Factor", value=0.9594, format="%.4f")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        with st.container(border=True):
-            st.markdown('<p class="section-header">1. Monomer 1 (e.g., Amino Acid)</p>', unsafe_allow_html=True)
-            m1_file = st.file_uploader("Upload Monomer 1 .log file", type=["log", "out"], key="str_m1")
+    st.markdown('<p class="section-header">1. Primary System (Monomer 1)</p>', unsafe_allow_html=True)
+    with st.container(border=True):
+        col_m1, _ = st.columns([1, 1])
+        with col_m1:
+            m1_file = st.file_uploader("Upload Monomer 1 .log file (e.g., Amino Acid)", type=["log", "out"], key="str_m1")
             m1_bonds = st.number_input("Number of target bonds in Monomer 1:", min_value=0, max_value=5, value=2)
             m1_bond_data = []
             for b in range(m1_bonds):
                 c_name, c_atoms = st.columns([2, 2])
-                with c_name: b_name = st.text_input(f"Bond {b+1} Name (e.g., O-H)", key=f"m1_bname_{b}")
+                with c_name: b_name = st.text_input(f"Bond {b+1} Name (e.g., O-H, C=O)", key=f"m1_bname_{b}")
                 with c_atoms: b_atoms = st.text_input(f"Atoms (e.g., 1, 17)", key=f"m1_batoms_{b}")
                 m1_bond_data.append({"name": b_name, "atoms_str": b_atoms})
 
-    with col2:
-        with st.container(border=True):
-            st.markdown('<p class="section-header">2. Monomer 2 (e.g., Solvent)</p>', unsafe_allow_html=True)
-            m2_file = st.file_uploader("Upload Monomer 2 .log file", type=["log", "out"], key="str_m2")
-            m2_bonds = st.number_input("Number of target bonds in Monomer 2:", min_value=0, max_value=5, value=1)
-            m2_bond_data = []
-            for b in range(m2_bonds):
-                c_name, c_atoms = st.columns([2, 2])
-                with c_name: b_name = st.text_input(f"Bond {b+1} Name", key=f"m2_bname_{b}")
-                with c_atoms: b_atoms = st.text_input(f"Atoms (e.g., 1, 2)", key=f"m2_batoms_{b}")
-                m2_bond_data.append({"name": b_name, "atoms_str": b_atoms})
-    
     st.write("")
-    with st.container(border=True):
-        st.markdown('<p class="section-header">3. Dimer / Complex Systems</p>', unsafe_allow_html=True)
-        num_complexes = st.number_input("Number of Complex files to evaluate:", min_value=1, max_value=20, value=1)
-        
-        complex_inputs = []
-        for i in range(num_complexes):
-            st.markdown(f"**Complex {i+1}**")
-            c_file, c_m1, c_m2 = st.columns([2, 2, 2])
-            with c_file:
-                d_file = st.file_uploader("Upload Complex .log file", type=["log", "out"], key=f"str_d_{i}")
-            with c_m1:
-                st.markdown("Monomer 1 atoms in Dimer:")
-                m1_d_atoms = []
-                for b, bdata in enumerate(m1_bond_data):
-                    if bdata["name"]: 
-                        d_atm = st.text_input(f"{bdata['name']} atoms in complex:", key=f"c{i}_m1b_{b}")
-                        m1_d_atoms.append({"name": bdata["name"], "atoms_str": d_atm})
+    st.markdown('<p class="section-header">2. Secondary Systems & Complexes</p>', unsafe_allow_html=True)
+    num_complexes = st.number_input("Number of secondary systems (e.g., different solvents):", min_value=1, max_value=20, value=1)
+    
+    systems_input = []
+    for i in range(num_complexes):
+        with st.container(border=True):
+            st.markdown(f"**System {i+1}**")
+            c_m2, c_comp = st.columns([1, 1])
             with c_m2:
-                st.markdown("Monomer 2 atoms in Dimer:")
+                m2_file = st.file_uploader(f"Upload Monomer 2 .log file (Solvent {i+1})", type=["log", "out"], key=f"str_m2_{i}")
+                m2_bonds = st.number_input(f"Number of target bonds in Monomer 2 (System {i+1}):", min_value=0, max_value=5, value=1, key=f"m2_b_cnt_{i}")
+                m2_bond_data = []
+                for b in range(m2_bonds):
+                    c_n, c_a = st.columns([2, 2])
+                    with c_n: bn = st.text_input(f"Bond {b+1} Name", key=f"m2_n_{i}_{b}")
+                    with c_a: ba = st.text_input(f"Atoms", key=f"m2_a_{i}_{b}")
+                    m2_bond_data.append({"name": bn, "atoms_str": ba})
+                    
+            with c_comp:
+                c_file = st.file_uploader(f"Upload Complex .log file (M1 + Solvent {i+1})", type=["log", "out"], key=f"str_c_{i}")
+                st.markdown("**Atoms in Complex:**")
+                
+                m1_d_atoms = []
+                if m1_bond_data:
+                    st.caption("Monomer 1 Bonds:")
+                    for b, bdata in enumerate(m1_bond_data):
+                        if bdata["name"]: 
+                            # Pre-fill atoms from Monomer 1 for easy editing
+                            d_atm = st.text_input(f"{bdata['name']} atoms:", value=bdata["atoms_str"], key=f"c{i}_m1b_{b}")
+                            m1_d_atoms.append({"name": bdata["name"], "atoms_str": d_atm})
+                            
                 m2_d_atoms = []
-                for b, bdata in enumerate(m2_bond_data):
-                    if bdata["name"]: 
-                        d_atm = st.text_input(f"{bdata['name']} atoms in complex:", key=f"c{i}_m2b_{b}")
-                        m2_d_atoms.append({"name": bdata["name"], "atoms_str": d_atm})
-            complex_inputs.append({"file": d_file, "m1_bonds": m1_d_atoms, "m2_bonds": m2_d_atoms})
-            st.write("---")
+                if m2_bond_data:
+                    st.caption("Monomer 2 Bonds:")
+                    for b, bdata in enumerate(m2_bond_data):
+                        if bdata["name"]: 
+                            # Pre-fill atoms from Monomer 2
+                            d_atm = st.text_input(f"{bdata['name']} atoms:", value=bdata["atoms_str"], key=f"c{i}_m2b_{b}")
+                            m2_d_atoms.append({"name": bdata["name"], "atoms_str": d_atm})
+                            
+            systems_input.append({"m2_file": m2_file, "m2_bonds": m2_bond_data, "c_file": c_file, "c_m1_bonds": m1_d_atoms, "c_m2_bonds": m2_d_atoms})
 
     if 'calc_done_struct' not in st.session_state:
         st.session_state.calc_done_struct = False
         st.session_state.excel_data_struct = None
         st.session_state.warnings_struct = []
+        st.session_state.extracted_rows_struct = []
+        st.session_state.bond_names_struct = []
         
     btn_placeholder = st.empty()
     do_struct_run = False
@@ -1023,10 +1040,13 @@ elif st.session_state.app_mode == "Structural Analysis":
         st.session_state.warnings_struct = [] # Reset warnings
         extracted_rows = []
         
-        # Determine all unique column headers based on user bonds
+        # Determine all unique column headers based on user bonds across all systems to group them properly
         all_bond_names = []
-        for bd in m1_bond_data + m2_bond_data:
+        for bd in m1_bond_data:
             if bd["name"] and bd["name"] not in all_bond_names: all_bond_names.append(bd["name"])
+        for sys in systems_input:
+            for bd in sys["m2_bonds"]:
+                if bd["name"] and bd["name"] not in all_bond_names: all_bond_names.append(bd["name"])
             
         def process_bond(content, name, atom_str, file_name):
             try: atoms = tuple([int(x.strip()) for x in atom_str.split(",")])
@@ -1044,7 +1064,8 @@ elif st.session_state.app_mode == "Structural Analysis":
             if freq is None: st.session_state.warnings_struct.append(f"Stretching frequency for '{name}' not found in {file_name}.")
             return dist, freq
 
-        # 1. Process Monomer 1
+        # 1. Process Monomer 1 (Base System)
+        m1_name = "Monomer_1"
         if m1_file:
             m1_file.seek(0)
             m1_content = m1_file.read().decode('utf-8')
@@ -1056,48 +1077,49 @@ elif st.session_state.app_mode == "Structural Analysis":
                     row_data[bd["name"]] = {"dist": dist, "freq": freq}
             extracted_rows.append(row_data)
 
-        # 2. Process Complex files (and interleave Monomer 2 rows if applicable)
-        for comp in complex_inputs:
-            c_file = comp["file"]
-            if not c_file: continue
+        # 2. Process Secondary Systems (M2 and Complexes)
+        base_m1 = re.split(r'[_ -]|site', m1_name, flags=re.IGNORECASE)[0]
+        
+        for idx, comp in enumerate(systems_input):
+            c_file = comp["c_file"]
+            m2_file = comp["m2_file"]
             
-            c_file.seek(0)
-            c_content = c_file.read().decode('utf-8')
-            c_name = os.path.splitext(c_file.name)[0]
+            c_name = os.path.splitext(c_file.name)[0] if c_file else f"Complex_{idx+1}"
+            m2_name = os.path.splitext(m2_file.name)[0] if m2_file else f"M2_{idx+1}"
             
-            # Extract base name for naming convention (e.g. "Glycine")
-            base_m1 = re.split(r'[_ -]|site', m1_name if m1_file else "Monomer", flags=re.IGNORECASE)[0]
-            c_system_name = f"{base_m1} ({c_name})"
-            row_data_comp = {"System": c_system_name}
+            # Row: M1 inside the Complex
+            if c_file:
+                c_file.seek(0)
+                c_content = c_file.read().decode('utf-8')
+                c_system_name = f"{base_m1} ({c_name})"
+                row_data_comp = {"System": c_system_name}
+                for bd in comp["c_m1_bonds"]:
+                    if bd["name"] and bd["atoms_str"]:
+                        dist, freq = process_bond(c_content, bd["name"], bd["atoms_str"], c_file.name)
+                        row_data_comp[bd["name"]] = {"dist": dist, "freq": freq}
+                extracted_rows.append(row_data_comp)
             
-            # Process M1 bonds in complex
-            for bd in comp["m1_bonds"]:
-                if bd["name"] and bd["atoms_str"]:
-                    dist, freq = process_bond(c_content, bd["name"], bd["atoms_str"], c_file.name)
-                    row_data_comp[bd["name"]] = {"dist": dist, "freq": freq}
-            extracted_rows.append(row_data_comp)
-            
-            # Process M2 (Isolated)
+            # Row: Isolated M2
             if m2_file:
                 m2_file.seek(0)
                 m2_content = m2_file.read().decode('utf-8')
-                m2_name = os.path.splitext(m2_file.name)[0]
                 row_data_m2 = {"System": m2_name}
-                for bd in m2_bond_data:
+                for bd in comp["m2_bonds"]:
                     if bd["name"] and bd["atoms_str"]:
                         dist, freq = process_bond(m2_content, bd["name"], bd["atoms_str"], m2_file.name)
                         row_data_m2[bd["name"]] = {"dist": dist, "freq": freq}
                 extracted_rows.append(row_data_m2)
                 
-            # Process M2 bonds in complex
-            row_data_c_solv = {"System": f"{m2_name if m2_file else 'M2'} ({c_name})"}
-            has_m2_bonds = False
-            for bd in comp["m2_bonds"]:
-                if bd["name"] and bd["atoms_str"]:
-                    has_m2_bonds = True
-                    dist, freq = process_bond(c_content, bd["name"], bd["atoms_str"], c_file.name)
-                    row_data_c_solv[bd["name"]] = {"dist": dist, "freq": freq}
-            if has_m2_bonds: extracted_rows.append(row_data_c_solv)
+            # Row: M2 inside the Complex
+            if c_file and comp["c_m2_bonds"]:
+                row_data_c_solv = {"System": f"{m2_name} ({c_name})"}
+                has_m2_bonds = False
+                for bd in comp["c_m2_bonds"]:
+                    if bd["name"] and bd["atoms_str"]:
+                        has_m2_bonds = True
+                        dist, freq = process_bond(c_content, bd["name"], bd["atoms_str"], c_file.name)
+                        row_data_c_solv[bd["name"]] = {"dist": dist, "freq": freq}
+                if has_m2_bonds: extracted_rows.append(row_data_c_solv)
 
         if not extracted_rows:
             st.error("No valid data could be extracted.")
@@ -1107,9 +1129,9 @@ elif st.session_state.app_mode == "Structural Analysis":
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
         worksheet = workbook.add_worksheet('Frequencies')
-        header_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'bottom': 1, 'font_name': 'Times New Roman', 'font_size': 12})
-        center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'font_name': 'Times New Roman', 'font_size': 12})
-        left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'font_name': 'Times New Roman', 'font_size': 12})
+        header_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
+        center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
+        left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
         
         # Build headers
         columns = ["System"]
@@ -1121,10 +1143,10 @@ elif st.session_state.app_mode == "Structural Analysis":
         worksheet.set_column('A:A', 30, left_format)
         if len(columns) > 1: worksheet.set_column(1, len(columns)-1, 20, center_format)
         
-        # Write data
+        # Write data row by row
         for row_num, row_dict in enumerate(extracted_rows, start=1):
             worksheet.set_row(row_num, 20)
-            worksheet.write(row_num, 0, row_dict.get("System", ""))
+            worksheet.write(row_num, 0, row_dict.get("System", ""), left_format)
             
             col_idx = 1
             for b_name in all_bond_names:
@@ -1132,16 +1154,33 @@ elif st.session_state.app_mode == "Structural Analysis":
                 dist = b_data.get("dist")
                 freq = b_data.get("freq")
                 
-                worksheet.write(row_num, col_idx, f"{dist:.3f}" if dist else "")
-                worksheet.write(row_num, col_idx+1, f"{freq:.3f}" if freq else "")
-                worksheet.write(row_num, col_idx+2, f"{freq * scaling_factor:.3f}" if freq else "")
+                worksheet.write(row_num, col_idx, float(dist) if dist else "", center_format)
+                worksheet.write(row_num, col_idx+1, float(freq) if freq else "", center_format)
+                worksheet.write(row_num, col_idx+2, float(freq * scaling_factor) if freq else "", center_format)
                 col_idx += 3
                 
         workbook.close()
+        
+        st.session_state.extracted_rows_struct = extracted_rows
+        st.session_state.bond_names_struct = all_bond_names
         st.session_state.excel_data_struct = output.getvalue()
         st.session_state.calc_done_struct = True
         st.rerun()
 
     if st.session_state.calc_done_struct:
         for w in st.session_state.warnings_struct: st.warning(w)
-        st.success("Vibrational Analysis Complete! Click Download to view the formatted report.")
+        st.markdown('<p class="section-header" style="text-align: center; border: none;">Tabulated Results</p>', unsafe_allow_html=True)
+        
+        # Format DataFrame for UI Display
+        df_data = []
+        for row in st.session_state.extracted_rows_struct:
+            flat_row = {"System": row["System"]}
+            for b_name in st.session_state.bond_names_struct:
+                b_data = row.get(b_name, {})
+                flat_row[f"Bond Length (A) {b_name}"] = b_data.get("dist")
+                flat_row[f"{b_name} Freq"] = b_data.get("freq")
+                flat_row[f"Scaled {b_name}"] = b_data.get("freq") * scaling_factor if b_data.get("freq") else None
+            df_data.append(flat_row)
+            
+        display_df = pd.DataFrame(df_data)
+        st.dataframe(display_df.style.format(precision=4), use_container_width=True)
