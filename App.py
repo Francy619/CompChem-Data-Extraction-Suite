@@ -253,6 +253,7 @@ elif st.session_state.app_mode == "Interaction Energy":
         st.session_state.results_ie = []
         st.session_state.excel_data_ie = None
         st.session_state.download_name_ie = ""
+        st.session_state.warnings_ie = []
 
     btn_placeholder = st.empty()
     do_calc = False
@@ -274,6 +275,8 @@ elif st.session_state.app_mode == "Interaction Energy":
             st.error("Please upload Monomer 1.")
         else:
             with st.spinner("Processing..."):
+                st.session_state.warnings_ie = [] # Reset warnings
+                
                 e_m1 = extract_energy(m1_file, is_bsse=False)
                 if e_m1 is None: 
                     st.error(f"HF= energy is not found in {m1_file.name}.")
@@ -304,9 +307,9 @@ elif st.session_state.app_mode == "Interaction Energy":
                             })
                         else:
                             if is_bsse:
-                                st.warning(f"Counterpoise corrected energy is not found in {d_file.name}.")
+                                st.session_state.warnings_ie.append(f"Counterpoise corrected energy is not found in {d_file.name}.")
                             else:
-                                st.warning(f"HF= energy is not found in {d_file.name}.")
+                                st.session_state.warnings_ie.append(f"HF= energy is not found in {d_file.name}.")
                             
                     if group_results:
                         min_kcal = min(r["ΔE (kcal/mol)"] for r in group_results)
@@ -361,6 +364,9 @@ elif st.session_state.app_mode == "Interaction Energy":
                 st.rerun()
 
     if st.session_state.calc_done_ie:
+        for w in st.session_state.warnings_ie:
+            st.warning(w)
+            
         st.markdown('<p class="section-header" style="text-align: center; border: none;">Tabulated Results</p>', unsafe_allow_html=True)
         
         display_df = pd.DataFrame(st.session_state.results_ie).drop(columns=["Is_Best", "Is_First_In_Sheet", "Is_First_In_Group"])
@@ -433,6 +439,7 @@ elif st.session_state.app_mode == "LED Analysis":
     if 'calc_done_led' not in st.session_state:
         st.session_state.calc_done_led = False
         st.session_state.excel_data_led = None
+        st.session_state.warnings_led = []
 
     btn_placeholder = st.empty()
     do_led_calc = False
@@ -451,6 +458,8 @@ elif st.session_state.app_mode == "LED Analysis":
 
     if do_led_calc:
         with st.spinner("Parsing Orca outputs..."):
+            st.session_state.warnings_led = [] # Reset warnings
+            
             base_energy = ["FINAL SINGLE POINT ENERGY"]
             triples_term = ["Triples Correction (T)"] 
             fragment_terms = ["E(CORR)(corrected)"] 
@@ -493,10 +502,10 @@ elif st.session_state.app_mode == "LED Analysis":
                         for term in terms:
                             if term == "Intra REF. energy":
                                 if "Intra REF. energy of Fragment 1" not in extracted or "Intra REF. energy of Fragment 2" not in extracted:
-                                    st.warning(f"'{term}' is missing or incomplete in {fileobj.name}.")
+                                    st.session_state.warnings_led.append(f"'{term}' is missing or incomplete in {fileobj.name}.")
                             else:
                                 if term not in extracted:
-                                    st.warning(f"'{term}' is not found in {fileobj.name}.")
+                                    st.session_state.warnings_led.append(f"'{term}' is not found in {fileobj.name}.")
                                     
                         data.update(extracted)
                         unique_extracted_data[fileobj.name] = data
@@ -611,8 +620,11 @@ elif st.session_state.app_mode == "LED Analysis":
             workbook.close()
             st.session_state.excel_data_led = output.getvalue()
             st.session_state.calc_done_led = True
-            st.success("LED Data Parsing Complete! Click Download to view the report.")
             st.rerun()
+            
+    if st.session_state.calc_done_led:
+        for w in st.session_state.warnings_led:
+            st.warning(w)
 
 # ==========================================
 # 6. APP MODE 3: NBO E(2) EXTRACTOR
@@ -637,6 +649,7 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
         st.session_state.excel_data_nbo = None
         st.session_state.all_top_n = []
         st.session_state.file_data_dict = {}
+        st.session_state.warnings_nbo = []
 
     btn_placeholder = st.empty()
     do_nbo_run = False
@@ -656,6 +669,8 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
         if not nbo_files:
             st.error("Please upload NBO files.")
         else:
+            st.session_state.warnings_nbo = [] # Reset warnings
+            
             file_data_dict = {}
             all_top_n_data = []
             for uploaded_file in nbo_files:
@@ -688,9 +703,9 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
                 
                 # NBO Error validation
                 if not found_perturbation:
-                    st.warning(f"Perturbation table is not found in {uploaded_file.name}.")
+                    st.session_state.warnings_nbo.append(f"Perturbation table is not found in {uploaded_file.name}.")
                 elif not file_extracted_data:
-                    st.warning(f"No valid donor-acceptor interactions extracted from {uploaded_file.name}.")
+                    st.session_state.warnings_nbo.append(f"No valid donor-acceptor interactions extracted from {uploaded_file.name}.")
                 else:
                     file_data_dict[basename] = file_extracted_data
                     filtered = [r for r in file_extracted_data if r[1] in allowed_sections]
@@ -721,8 +736,12 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
             st.session_state.excel_data_nbo = output.getvalue()
             st.session_state.calc_done_nbo = True
             st.rerun()
+            
     if st.session_state.calc_done_nbo:
         st.write("") 
+        for w in st.session_state.warnings_nbo:
+            st.warning(w)
+            
         if st.session_state.all_top_n:
             st.dataframe(pd.DataFrame(st.session_state.all_top_n, columns=["System", "Interaction Section", "Donor (i)", "Acceptor (j)", "E(2) kcal/mol", "E(j)-E(i) a.u.", "F(i,j) a.u."]), use_container_width=True)
 
@@ -753,6 +772,7 @@ elif st.session_state.app_mode == "QTAIM Analysis":
         st.session_state.calc_done_qtaim = False
         st.session_state.qtaim_results = []
         st.session_state.excel_data_qtaim = None
+        st.session_state.warnings_qtaim = []
 
     btn_placeholder = st.empty()
     do_qtaim_run = False
@@ -769,6 +789,8 @@ elif st.session_state.app_mode == "QTAIM Analysis":
                 st.download_button("Download QTAIM Report (.xlsx)", data=st.session_state.excel_data_qtaim, file_name="QTAIM_Results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
     if do_qtaim_run:
+        st.session_state.warnings_qtaim = [] # Reset warnings
+        
         search_terms = {"Density of all electrons": "Density of all electrons:", "Laplacian of electron density": "Laplacian of electron density:", "Potential energy density V(r)": "Potential energy density V(r):", "Lagrangian kinetic energy G(r)": "Lagrangian kinetic energy G(r):", "Energy density E(r) or H(r)": "Energy density E(r) or H(r):"}
         all_extracted_data = []
         for item in qtaim_inputs:
@@ -806,7 +828,7 @@ elif st.session_state.app_mode == "QTAIM Analysis":
             
             # QTAIM Error validation
             if not extracted_data:
-                st.warning(f"Target Critical Points ({item['cp_str']}) and their properties are not found in {uploaded_file.name}.")
+                st.session_state.warnings_qtaim.append(f"Target Critical Points ({item['cp_str']}) and their properties are not found in {uploaded_file.name}.")
             else:
                 for data in extracted_data:
                     density = data.get("Density of all electrons")
@@ -863,3 +885,7 @@ elif st.session_state.app_mode == "QTAIM Analysis":
         st.session_state.excel_data_qtaim = output.getvalue()
         st.session_state.calc_done_qtaim = True
         st.rerun()
+
+    if st.session_state.calc_done_qtaim:
+        for w in st.session_state.warnings_qtaim:
+            st.warning(w)
