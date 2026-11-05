@@ -187,7 +187,6 @@ if st.session_state.app_mode == "Home":
         Automated tools for parsing outputs from Gaussian, ORCA, and Multiwfn.
     </div>
     """, unsafe_allow_html=True)
-
 # ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
 # ==========================================
