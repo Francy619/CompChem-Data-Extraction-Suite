@@ -160,7 +160,7 @@ if st.session_state.app_mode == "Home":
             background-color: #1E3A8A !important; 
             color: #FFFFFF !important; 
             border: none !important; 
-            border-radius: 12px !important; 
+            border-radius: 8px !important; 
             font-weight: 800 !important; 
             font-size: 1.4rem !important; 
             min-height: 100px !important;
@@ -191,7 +191,7 @@ if st.session_state.app_mode == "Home":
             st.session_state.app_mode = "NBO E(2) Analysis"
             st.rerun()
         st.write("")
-        if st.button("📏 Vibrational Analysis", use_container_width=True, type="secondary"): 
+        if st.button("📏 Structural and Vibrational Data Analysis", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "Structural Analysis"
             st.rerun()
             
