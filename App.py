@@ -65,6 +65,17 @@ st.markdown("""
     
     /* 3. Hide the top-right header menu (Hamburger & Deploy buttons) */
     header {visibility: hidden !important;}
+st.markdown("""
+<style>
+    /* Forcefully hide the Streamlit footer and status widget */
+    footer, [data-testid="stFooter"], .stStatusWidget {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        max-height: 0px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
     /* ----------------------------------------------- */
 
     /* Hide sidebar completely for full screen feel */
