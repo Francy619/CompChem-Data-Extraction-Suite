@@ -902,7 +902,7 @@ elif st.session_state.app_mode == "Structural Analysis":
             st.session_state.app_mode = "Home"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="main-header-container"><div class="main-title">📏 Structural & Vibrational Value Analysis</div><div class="sub-title">Track bond lengths and stretching frequencies from Gaussian log files.</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header-container"><div class="main-title">📏 Structural & Vibrational Data Analysis</div><div class="sub-title">Track bond lengths and stretching frequencies from Gaussian log files.</div></div>', unsafe_allow_html=True)
     
     # --- HELPER FUNCTIONS FOR THIS MODULE ---
     def get_optimized_coords(content):
