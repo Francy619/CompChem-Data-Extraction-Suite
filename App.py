@@ -54,18 +54,30 @@ def extract_led_values(uploaded_file, target_strings):
 # ==========================================
 st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-# Ensure app_mode is initialized immediately
-if 'app_mode' not in st.session_state:
-    st.session_state.app_mode = "Home"
 st.markdown("""
 <style>
-    /* --- Hide Streamlit Branding & Overlays --- */
-    footer { display: none !important; }
-    [data-testid="stFooter"] { display: none !important; }
-    .stStatusWidget { display: none !important; }
-    button[title="View fullscreen"] { display: none !important; }
-    header { visibility: hidden !important; display: none !important; }
+    /* --- NEW: Hide Streamlit Branding & Overlays --- */
+    /* 1. Hide the 'Made with Streamlit' footer completely */
+    footer {visibility: hidden !important;}
     
+    /* 2. Hide the 'View fullscreen' button that appears over dataframes */
+    button[title="View fullscreen"] {display: none !important;}
+    
+    /* 3. Hide the top-right header menu (Hamburger & Deploy buttons) */
+    header {visibility: hidden !important;}
+st.markdown("""
+<style>
+    /* Forcefully hide the Streamlit footer and status widget */
+    footer, [data-testid="stFooter"], .stStatusWidget {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        max-height: 0px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+    /* ----------------------------------------------- */
+
     /* Hide sidebar completely for full screen feel */
     [data-testid="collapsedControl"] { display: none; }
     
@@ -119,7 +131,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
 # ==========================================
 # 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
