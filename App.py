@@ -16,6 +16,7 @@ def extract_energy(uploaded_file, is_bsse=False):
     uploaded_file.seek(0)
     content = uploaded_file.read().decode('utf-8')
     if is_bsse:
+        # The colon has been completely removed as requested
         matches = re.findall(r'Counterpoise\s*corrected\s*energy\s*=\s*([-+]?\d*\.\d+)', content, re.IGNORECASE)
         return Decimal(matches[-1]) if matches else None
     else:
@@ -143,7 +144,8 @@ components.html("""
 # ==========================================
 # 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
-if st.session_state.app_mode == "Home":    
+if st.session_state.app_mode == "Home":
+    
     # Inject MASSIVE button CSS *only* for the Home Page
     st.markdown("""
     <style>
@@ -209,6 +211,7 @@ if st.session_state.app_mode == "Home":
         Automated tools for parsing outputs from Gaussian, ORCA, and Multiwfn.
     </div>
     """, unsafe_allow_html=True)
+
 # ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
 # ==========================================
@@ -274,17 +277,24 @@ elif st.session_state.app_mode == "Interaction Energy":
         else:
             with st.spinner("Processing..."):
                 e_m1 = extract_energy(m1_file, is_bsse=False)
-                if e_m1 is None: st.stop()
+                if e_m1 is None: 
+                    st.error(f"Could not extract HF= energy from Monomer 1 ({m1_file.name}).")
+                    st.stop()
                     
                 results = []
                 is_first_in_sheet = True
                 
                 for idx, sys in enumerate(systems_data):
                     if not sys["m2"] or not sys["complexes"]: continue
+                    
                     e_m2_single = extract_energy(sys["m2"], is_bsse=False) 
-                    if e_m2_single is None: continue
+                    if e_m2_single is None: 
+                        st.error(f"Could not extract HF= energy from Monomer 2 ({sys['m2'].name}). Skipping system.")
+                        continue
+                        
                     e_m2_total = e_m2_single * sys["multiplier"]
                     group_results = []
+                    
                     for d_file in sys["complexes"]:
                         e_dimer = extract_energy(d_file, is_bsse=is_bsse)
                         if e_dimer is not None:
@@ -294,6 +304,9 @@ elif st.session_state.app_mode == "Interaction Energy":
                                 "E Monomer 1 (a.u.)": e_m1, "Monomer 2 File": sys["m2"].name, "Qty": int(sys["multiplier"]),
                                 "E Monomer 2 (single a.u.)": e_m2_single, "ΔE (a.u.)": delta_au, "ΔE (kcal/mol)": delta_au * HARTREE_TO_KCAL
                             })
+                        else:
+                            st.warning(f"Failed to extract energy from Complex file: {d_file.name}. Check file formatting.")
+                            
                     if group_results:
                         min_kcal = min(r["ΔE (kcal/mol)"] for r in group_results)
                         for i, r in enumerate(group_results):
@@ -304,7 +317,7 @@ elif st.session_state.app_mode == "Interaction Energy":
                             is_first_in_sheet = False
 
                 if not results:
-                    st.error("Calculations aborted. No valid interaction energies could be extracted.")
+                    st.error("Calculations aborted. No valid interaction energies could be extracted from the uploaded files.")
                     st.stop()
 
                 output = io.BytesIO()
