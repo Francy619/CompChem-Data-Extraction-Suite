@@ -54,6 +54,9 @@ def extract_led_values(uploaded_file, target_strings):
 # ==========================================
 st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
+# Ensure app_mode is initialized immediately
+if 'app_mode' not in st.session_state:
+    st.session_state.app_mode = "Home"
 st.markdown("""
 <style>
     /* --- Hide Streamlit Branding & Overlays --- */
