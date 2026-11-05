@@ -1,1 +1,1 @@
-# energy-calculator
+# CompChem Data Extraction Suite
