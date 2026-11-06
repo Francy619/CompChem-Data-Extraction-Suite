@@ -160,10 +160,10 @@ if st.session_state.app_mode == "Home":
             background-color: #1E3A8A !important; 
             color: #FFFFFF !important; 
             border: none !important; 
-            border-radius: 8px !important; 
+            border-radius: 12px !important; 
             font-weight: 800 !important; 
-            font-size: 4.4rem !important; 
-            min-height: 100px !important;
+            font-size: 1.4rem !important; 
+            min-height: 140px !important;
             padding: 30px 20px !important; 
             box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important;
         }
@@ -191,7 +191,7 @@ if st.session_state.app_mode == "Home":
             st.session_state.app_mode = "NBO E(2) Analysis"
             st.rerun()
         st.write("")
-        if st.button("📏 Structural and Vibrational Data Analysis", use_container_width=True, type="secondary"): 
+        if st.button("📏 Vibrational Analysis", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "Structural Analysis"
             st.rerun()
             
@@ -902,7 +902,7 @@ elif st.session_state.app_mode == "Structural Analysis":
             st.session_state.app_mode = "Home"; st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="main-header-container"><div class="main-title">📏 Structural & Vibrational Data Analysis</div><div class="sub-title">Track bond lengths and stretching frequencies from Gaussian log files.</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header-container"><div class="main-title">📏 Structural & Vibrational Analysis</div><div class="sub-title">Track bond lengths and stretching frequencies from Gaussian log files.</div></div>', unsafe_allow_html=True)
     
     # --- HELPER FUNCTIONS FOR THIS MODULE ---
     def get_optimized_coords(content):
@@ -969,7 +969,7 @@ elif st.session_state.app_mode == "Structural Analysis":
             for b in range(m1_bonds):
                 c_name, c_atoms = st.columns([2, 2])
                 with c_name: b_name = st.text_input(f"Bond {b+1} Name (e.g., O-H, C=O)", key=f"m1_bname_{b}")
-                with c_atoms: b_atoms = st.text_input(f"Atom Numbers (e.g., 1, 17)", key=f"m1_batoms_{b}")
+                with c_atoms: b_atoms = st.text_input(f"Atoms (e.g., 1, 17)", key=f"m1_batoms_{b}")
                 m1_bond_data.append({"name": b_name, "atoms_str": b_atoms})
 
     st.write("")
@@ -988,7 +988,7 @@ elif st.session_state.app_mode == "Structural Analysis":
                 for b in range(m2_bonds):
                     c_n, c_a = st.columns([2, 2])
                     with c_n: bn = st.text_input(f"Bond {b+1} Name", key=f"m2_n_{i}_{b}")
-                    with c_a: ba = st.text_input(f"Atom Numbers", key=f"m2_a_{i}_{b}")
+                    with c_a: ba = st.text_input(f"Atoms", key=f"m2_a_{i}_{b}")
                     m2_bond_data.append({"name": bn, "atoms_str": ba})
                     
             with c_comp:
