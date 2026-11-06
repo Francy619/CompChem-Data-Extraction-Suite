@@ -3,9 +3,27 @@ import os
 import re
 import xlsxwriter
 import io
+import zipfile
+import shutil
+import subprocess
 from decimal import Decimal
 import pandas as pd
 import streamlit.components.v1 as components
+
+# --- AUTO-EXTRACT MULTIWFN (HANDLES FOLDERS INSIDE ZIP) ---
+if not os.path.exists("Multiwfn") and os.path.exists("Multiwfn.zip"):
+    with zipfile.ZipFile("Multiwfn.zip", 'r') as zip_ref:
+        zip_ref.extractall(".")
+    
+    for root, dirs, files in os.walk("."):
+        if "Multiwfn" in files:
+            file_path = os.path.join(root, "Multiwfn")
+            if os.path.abspath(file_path) != os.path.abspath("Multiwfn"):
+                shutil.move(file_path, "Multiwfn")
+            break
+            
+    if os.path.exists("Multiwfn"):
+        os.chmod("Multiwfn", 0o755)
 
 # --- IMPORTS FOR 3D RENDERING ---
 try:
@@ -63,80 +81,29 @@ def extract_led_values(uploaded_file, target_strings):
 # ==========================================
 st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-# ---------------------------------------------------------
-# CRITICAL FIX: Initialize Session State before rendering
-# ---------------------------------------------------------
 if 'app_mode' not in st.session_state: 
     st.session_state.app_mode = "Home"
-# ---------------------------------------------------------
 
 st.markdown("""
 <style>
-    /* --- Hide Streamlit Branding & Overlays --- */
-    footer, [data-testid="stFooter"], .stStatusWidget {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0px !important;
-        max-height: 0px !important;
-    }
+    footer, [data-testid="stFooter"], .stStatusWidget { display: none !important; visibility: hidden !important; height: 0px !important; max-height: 0px !important; }
     button[title="View fullscreen"] { display: none !important; }
     header { visibility: hidden !important; display: none !important; }
-    
-    /* Hide sidebar completely for full screen feel */
     [data-testid="collapsedControl"] { display: none; }
-    
     .main-header-container { text-align: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #E2E8F0; }
     .main-title { font-size: 3.2rem; color: #1E3A8A; font-weight: 800; margin-bottom: 5px; font-family: 'Segoe UI', sans-serif; }
     .sub-title { font-size: 1.1rem; color: #4B5563; font-family: 'Segoe UI', sans-serif; }
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
     
-    /* Global Action Buttons (Primary) - NORMAL SIZE */
-    button[kind="primary"] { 
-        background-color: #1E3A8A !important; 
-        color: #FFFFFF !important; 
-        border: none !important; 
-        border-radius: 6px !important; 
-        font-weight: 700 !important; 
-        padding: 8px 16px !important; 
-        transition: all 0.3s ease-in-out !important; 
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; 
-    }
-    button[kind="primary"]:hover { 
-        background-color: #2563EB !important; 
-        transform: translateY(-2px); 
-    }
-    
-    /* Global Secondary Buttons (Upload, Back to Home) - NORMAL SIZE */
-    button[kind="secondary"] {
-        border-radius: 6px !important;
-        font-weight: 600 !important;
-        transition: all 0.2s ease-in-out !important;
-    }
-    button[kind="secondary"]:hover {
-        border-color: #1E3A8A !important;
-        color: #1E3A8A !important;
-    }
-    
-    /* Force File Uploader Elements into a Single Horizontal Row */
-    [data-testid="stFileUploaderDropzone"] > div {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        flex-wrap: nowrap !important;
-        gap: 10px !important;
-        padding: 10px !important;
-    }
-    
-    /* Prevent the helper text from breaking into multiple lines */
-    [data-testid="stFileUploaderDropzone"] small {
-        white-space: nowrap !important;
-        margin-top: 0 !important;
-        font-size: 0.85rem !important;
-    }
+    button[kind="primary"] { background-color: #1E3A8A !important; color: #FFFFFF !important; border: none !important; border-radius: 6px !important; font-weight: 700 !important; padding: 8px 16px !important; transition: all 0.3s ease-in-out !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; }
+    button[kind="primary"]:hover { background-color: #2563EB !important; transform: translateY(-2px); }
+    button[kind="secondary"] { border-radius: 6px !important; font-weight: 600 !important; transition: all 0.2s ease-in-out !important; }
+    button[kind="secondary"]:hover { border-color: #1E3A8A !important; color: #1E3A8A !important; }
+    [data-testid="stFileUploaderDropzone"] > div { display: flex !important; flex-direction: row !important; align-items: center !important; flex-wrap: nowrap !important; gap: 10px !important; padding: 10px !important; }
+    [data-testid="stFileUploaderDropzone"] small { white-space: nowrap !important; margin-top: 0 !important; font-size: 0.85rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# JavaScript injection to aggressively remove iframe footers
 components.html("""
     <script>
         const removeFooter = setInterval(() => {
@@ -151,68 +118,41 @@ components.html("""
 # 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
 if st.session_state.app_mode == "Home":
-    
-    # Inject MASSIVE button CSS *only* for the Home Page
     st.markdown("""
     <style>
-        .menu-title { 
-            font-size: 4.8rem; font-weight: 600; color: #1E3A8A; text-align: center; 
-            margin-top: 20px; margin-bottom: 40px; 
-            font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif; 
-            line-height: 1.1; letter-spacing: 2px; 
-        }
+        .menu-title { font-size: 4.8rem; font-weight: 600; color: #1E3A8A; text-align: center; margin-top: 20px; margin-bottom: 40px; font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif; line-height: 1.1; letter-spacing: 2px; }
         .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
-        
         [data-testid="stAppViewContainer"] { overflow-y: hidden !important; }
-        
-        /* Override secondary buttons ONLY on this page to make them giant blue blocks */
-        button[kind="secondary"] { 
-            background-color: #1E3A8A !important; 
-            color: #FFFFFF !important; 
-            border: none !important; 
-            border-radius: 8px !important; 
-            font-weight: 800 !important; 
-            font-size: 2.4rem !important; 
-            min-height: 100px !important;
-            padding: 30px 20px !important; 
-            box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important;
-        }
-        button[kind="secondary"]:hover { 
-            background-color: #2563EB !important; 
-            color: #FFFFFF !important; 
-            transform: translateY(-6px) !important;
-            box-shadow: 0 12px 20px rgba(37, 99, 235, 0.3) !important;
-        }
+        button[kind="secondary"] { background-color: #1E3A8A !important; color: #FFFFFF !important; border: none !important; border-radius: 8px !important; font-weight: 800 !important; font-size: 2.4rem !important; min-height: 100px !important; padding: 30px 20px !important; box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important; }
+        button[kind="secondary"]:hover { background-color: #2563EB !important; color: #FFFFFF !important; transform: translateY(-6px) !important; box-shadow: 0 12px 20px rgba(37, 99, 235, 0.3) !important; }
     </style>
     """, unsafe_allow_html=True)
         
     st.markdown('<p class="menu-title">CompChem Data Extraction Suite</p>', unsafe_allow_html=True)
     st.write("")
     
-    # Centered 2x2 Grid for Buttons
-    c_space_l, c_btn_1, c_btn_2, c_space_r = st.columns([1, 3, 3, 1])
+    c_space_l, c_btn_1, c_btn_2, c_btn_3, c_space_r = st.columns([1, 4, 4, 4, 1])
     
     with c_btn_1:
-        if st.button("🔬 Interaction Energy Extractor", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "Interaction Energy"
-            st.rerun()
+        if st.button("🔬 Interaction Energy", use_container_width=True, type="secondary"): 
+            st.session_state.app_mode = "Interaction Energy"; st.rerun()
         st.write("")
-        if st.button("⚛️ NBO E(2) Extractor", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "NBO E(2) Analysis"
-            st.rerun()
-        st.write("")
-        if st.button("📏 Vibrational Analysis", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "Structural Analysis"
-            st.rerun()
+        if st.button("⚛️ NBO E(2) Analysis", use_container_width=True, type="secondary"): 
+            st.session_state.app_mode = "NBO E(2) Analysis"; st.rerun()
             
     with c_btn_2:
-        if st.button("📊 LED Data Parser", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "LED Analysis"
-            st.rerun()
+        if st.button("📊 LED Parser", use_container_width=True, type="secondary"): 
+            st.session_state.app_mode = "LED Analysis"; st.rerun()
         st.write("")
-        if st.button("⭕ QTAIM Properties Tabulator", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "QTAIM Analysis"
-            st.rerun()
+        if st.button("📏 Vibrational Data", use_container_width=True, type="secondary"): 
+            st.session_state.app_mode = "Structural Analysis"; st.rerun()
+            
+    with c_btn_3:
+        if st.button("⭕ QTAIM Properties", use_container_width=True, type="secondary"): 
+            st.session_state.app_mode = "QTAIM Analysis"; st.rerun()
+        st.write("")
+        if st.button("📈 CVB Index (Multiwfn)", use_container_width=True, type="secondary"): 
+            st.session_state.app_mode = "CVB Index"; st.rerun()
             
     st.markdown("""
     <div class="footer-text">
@@ -1261,3 +1201,153 @@ elif st.session_state.app_mode == "Structural Analysis":
             
         display_df = pd.DataFrame(df_data)
         st.dataframe(display_df.style.format(precision=4), use_container_width=True)
+
+# ==========================================
+# 9. APP MODE 6: CVB INDEX EXTRACTOR
+# ==========================================
+elif st.session_state.app_mode == "CVB Index":
+    st.markdown('<div class="home-btn-container">', unsafe_allow_html=True)
+    col_home, _ = st.columns([1, 6])
+    with col_home:
+        if st.button("🏠 Back to Home", type="secondary", key="home_cvb"): 
+            st.session_state.app_mode = "Home"; st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="main-header-container"><div class="main-title">📈 Core Valence Bifurcation (CVB) Index</div><div class="sub-title">Automate Multiwfn to calculate CVB metrics directly from .wfn/.wfx files.</div></div>', unsafe_allow_html=True)
+    
+    # Check if the binary was found and unzipped successfully
+    if not os.path.exists("Multiwfn"):
+        st.error("🚨 **Multiwfn Binary Missing:** The 'Multiwfn' executable was not found on the server. Please ensure Multiwfn.zip is uploaded to the root of your GitHub repository.")
+        st.stop()
+        
+    num_cvb_systems = st.number_input("How many Wavefunction files to evaluate?", min_value=1, max_value=20, value=1)
+    
+    cvb_inputs = []
+    for i in range(num_cvb_systems):
+        with st.container(border=True):
+            col1, col2 = st.columns([2, 1])
+            with col1: w_file = st.file_uploader(f"Upload .wfn or .wfx File {i+1}", type=["wfn", "wfx"], key=f"cvb_wfn_{i}")
+            with col2: w_atoms = st.text_input("Target Atoms (e.g., 1,3,4)", key=f"cvb_atoms_{i}")
+            cvb_inputs.append({"file": w_file, "atoms": w_atoms})
+            
+    st.divider()
+    
+    if 'calc_done_cvb' not in st.session_state:
+        st.session_state.calc_done_cvb = False
+        st.session_state.excel_data_cvb = None
+        st.session_state.cvb_results = []
+        
+    btn_placeholder = st.empty()
+    do_cvb_run = False
+    
+    with btn_placeholder.container():
+        if not st.session_state.calc_done_cvb:
+            col_s1, col_btn, col_s2 = st.columns([1, 1, 1])
+            with col_btn:
+                if st.button("Run Multiwfn & Extract CVB", type="primary", use_container_width=True): do_cvb_run = True
+        else:
+            col_s1, col_calc, col_down, col_s2 = st.columns([2, 3, 3, 2])
+            with col_calc:
+                if st.button("Run Multiwfn & Extract CVB", type="primary", use_container_width=True): do_cvb_run = True
+            with col_down:
+                st.download_button("Download CVB Report (.xlsx)", data=st.session_state.excel_data_cvb, file_name="CVB_Index_Results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
+
+    if do_cvb_run:
+        all_extracted_data = []
+        
+        # Make a temporary directory to keep things clean
+        tmp_dir = "temp_multiwfn"
+        os.makedirs(tmp_dir, exist_ok=True)
+        
+        with st.spinner("Running Multiwfn silently in the background... This may take a moment."):
+            for item in cvb_inputs:
+                w_file = item["file"]
+                atoms = item["atoms"].strip()
+                
+                if not w_file or not atoms: continue
+                
+                # 1. Save uploaded file to the temporary disk
+                file_path = os.path.join(tmp_dir, w_file.name)
+                with open(file_path, "wb") as f:
+                    f.write(w_file.getbuffer())
+                    
+                basename = os.path.splitext(w_file.name)[0]
+                system_name = basename.replace('_', ' - ')
+                
+                # 2. Pipe the exact keystrokes into Multiwfn
+                command_sequence = f"200\n1\n{atoms}\n0\nq\n"
+                
+                try:
+                    process = subprocess.run(
+                        ["./Multiwfn", file_path],
+                        input=command_sequence,
+                        capture_output=True,
+                        text=True,
+                        check=True
+                    )
+                    
+                    output_text = process.stdout
+                    
+                    # 3. Parse the output text directly from the terminal stream
+                    match_cv_d = re.search(r'donor.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'ELF\(C-V,\s*D\).*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE)
+                    match_cv_a = re.search(r'acceptor.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'ELF\(C-V,\s*A\).*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE)
+                    match_dh_a = re.search(r'between D-H and A.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'ELF\(DH-A\).*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'DH-A.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'minimum.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE)
+                    match_cvb = re.search(r'CVB index.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'CVB.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE)
+
+                    all_extracted_data.append({
+                        "System": system_name,
+                        "ELF(C-V,D)": float(match_cv_d.group(1)) if match_cv_d else None,
+                        "ELF(C-V,A)": float(match_cv_a.group(1)) if match_cv_a else None,
+                        "ELF(DH-A)": float(match_dh_a.group(1)) if match_dh_a else None,
+                        "CVB index": float(match_cvb.group(1)) if match_cvb else None
+                    })
+                    
+                except subprocess.CalledProcessError as e:
+                    st.error(f"Multiwfn crashed processing {w_file.name}: {e.stderr}")
+                finally:
+                    # Clean up the file off the server immediately
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+            
+            # Clean up temporary directory
+            if os.path.exists(tmp_dir):
+                os.rmdir(tmp_dir)
+
+        if not all_extracted_data:
+            st.error("No valid CVB data was extracted.")
+            st.stop()
+            
+        # 4. Generate the Excel File
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet("CVB Data")
+        
+        header_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
+        center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12, 'num_format': '0.0000'})
+        left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
+        
+        headers = ["System", "ELF(C-V,D)", "ELF(C-V,A)", "ELF(DH-A)", "CVB index"]
+        worksheet.set_row(0, 24)
+        for col_num, header in enumerate(headers): worksheet.write(0, col_num, header, header_format)
+        worksheet.set_column('A:A', 35, left_format)
+        worksheet.set_column('B:E', 20, center_format)
+        
+        for row_num, row_data in enumerate(all_extracted_data, start=1):
+            worksheet.set_row(row_num, 20)
+            worksheet.write(row_num, 0, row_data["System"], left_format)
+            
+            for col_idx, key in enumerate(headers[1:], start=1):
+                val = row_data.get(key)
+                if val is not None: worksheet.write_number(row_num, col_idx, val, center_format)
+                else: worksheet.write(row_num, col_idx, "N/A", center_format)
+                
+        workbook.close()
+        
+        st.session_state.cvb_results = all_extracted_data
+        st.session_state.excel_data_cvb = output.getvalue()
+        st.session_state.calc_done_cvb = True
+        st.rerun()
+
+    if st.session_state.calc_done_cvb:
+        st.markdown('<p class="section-header" style="text-align: center; border: none;">Tabulated CVB Results</p>', unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame(st.session_state.cvb_results).style.format(precision=4), use_container_width=True)
