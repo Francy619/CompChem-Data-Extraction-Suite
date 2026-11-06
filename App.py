@@ -7,6 +7,14 @@ from decimal import Decimal
 import pandas as pd
 import streamlit.components.v1 as components
 
+# --- IMPORTS FOR 3D RENDERING ---
+try:
+    import py3Dmol
+    from stmol import showmol
+    HAS_3D = True
+except ImportError:
+    HAS_3D = False
+
 HARTREE_TO_KCAL = Decimal('627.509')
 
 # ==========================================
@@ -155,6 +163,8 @@ if st.session_state.app_mode == "Home":
         }
         .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
         
+        [data-testid="stAppViewContainer"] { overflow-y: hidden !important; }
+        
         /* Override secondary buttons ONLY on this page to make them giant blue blocks */
         button[kind="secondary"] { 
             background-color: #1E3A8A !important; 
@@ -162,7 +172,7 @@ if st.session_state.app_mode == "Home":
             border: none !important; 
             border-radius: 8px !important; 
             font-weight: 800 !important; 
-            font-size: 4.4rem !important; 
+            font-size: 2.4rem !important; 
             min-height: 100px !important;
             padding: 30px 20px !important; 
             box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important;
@@ -191,7 +201,7 @@ if st.session_state.app_mode == "Home":
             st.session_state.app_mode = "NBO E(2) Analysis"
             st.rerun()
         st.write("")
-        if st.button("📏 Structural and Vibrational Data Analysis", use_container_width=True, type="secondary"): 
+        if st.button("📏 Vibrational Analysis", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "Structural Analysis"
             st.rerun()
             
@@ -790,7 +800,7 @@ elif st.session_state.app_mode == "QTAIM Analysis":
                 st.download_button("Download QTAIM Report (.xlsx)", data=st.session_state.excel_data_qtaim, file_name="QTAIM_Results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="secondary")
 
     if do_qtaim_run:
-        st.session_state.warnings_qtaim = []
+        st.session_state.warnings_qtaim = [] 
         
         search_terms = {"Density of all electrons": "Density of all electrons:", "Laplacian of electron density": "Laplacian of electron density:", "Potential energy density V(r)": "Potential energy density V(r):", "Lagrangian kinetic energy G(r)": "Lagrangian kinetic energy G(r):", "Energy density E(r) or H(r)": "Energy density E(r) or H(r):"}
         all_extracted_data = []
@@ -905,6 +915,13 @@ elif st.session_state.app_mode == "Structural Analysis":
     st.markdown('<div class="main-header-container"><div class="main-title">📏 Structural & Vibrational Data Analysis</div><div class="sub-title">Track bond lengths and stretching frequencies from Gaussian log files.</div></div>', unsafe_allow_html=True)
     
     # --- HELPER FUNCTIONS FOR THIS MODULE ---
+    ATOMIC_SYMBOLS = {
+        1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N', 8: 'O', 9: 'F', 10: 'Ne',
+        11: 'Na', 12: 'Mg', 13: 'Al', 14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar',
+        19: 'K', 20: 'Ca', 24: 'Cr', 25: 'Mn', 26: 'Fe', 27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn',
+        35: 'Br', 53: 'I'
+    }
+
     def get_optimized_coords(content):
         coords = {}
         lines = content.splitlines()
@@ -917,6 +934,45 @@ elif st.session_state.app_mode == "Structural Analysis":
                     if len(parts) == 6: coords[int(parts[0])] = (float(parts[3]), float(parts[4]), float(parts[5]))
                 break
         return coords
+
+    def show_3d_molecule(content):
+        lines = content.splitlines()
+        coords = []
+        for i in range(len(lines)-1, -1, -1):
+            if "Standard orientation:" in lines[i] or "Input orientation:" in lines[i]:
+                start_idx = i + 5
+                for j in range(start_idx, len(lines)):
+                    if "---------------------------------------------------------------------" in lines[j]: break
+                    parts = lines[j].split()
+                    if len(parts) == 6:
+                        atom_num = int(parts[1])
+                        sym = ATOMIC_SYMBOLS.get(atom_num, 'X')
+                        coords.append({"idx": parts[0], "sym": sym, "x": parts[3], "y": parts[4], "z": parts[5]})
+                break
+        
+        if not coords: 
+            st.warning("Could not extract molecular coordinates for 3D viewer.")
+            return
+        
+        xyz_str = f"{len(coords)}\n\n"
+        for c in coords:
+            xyz_str += f"{c['sym']} {c['x']} {c['y']} {c['z']}\n"
+            
+        view = py3Dmol.view(width=450, height=400)
+        view.addModel(xyz_str, 'xyz')
+        view.setStyle({'stick':{'radius': 0.15}, 'sphere':{'scale': 0.3}})
+        
+        for c in coords:
+            view.addLabel(f"{c['sym']}{c['idx']}", {
+                "position": {"x": float(c['x']), "y": float(c['y']), "z": float(c['z'])},
+                "fontColor": "black",
+                "backgroundColor": "white",
+                "backgroundOpacity": 0.8,
+                "fontsize": 14
+            })
+            
+        view.zoomTo()
+        showmol(view, height=400, width=450)
 
     def calculate_distance(coord1, coord2):
         return math.sqrt(sum((c1 - c2) ** 2 for c1, c2 in zip(coord1, coord2)))
@@ -952,18 +1008,31 @@ elif st.session_state.app_mode == "Structural Analysis":
         return best_freq
 
     # --- UI LAYOUT ---
-    st.sidebar.markdown("### Settings")
-    need_scaling = st.sidebar.radio("Apply Frequency Scaling?", ["No", "Yes"], index=1)
+    st.markdown('<p class="section-header">⚙️ General Settings</p>', unsafe_allow_html=True)
+    with st.container(border=True):
+        col_scale1, col_scale2 = st.columns(2)
+        with col_scale1:
+            need_scaling = st.radio("Apply Frequency Scaling?", ["No", "Yes"], index=1, horizontal=True)
+        with col_scale2:
+            scaling_factor = None
+            if need_scaling == "Yes":
+                scaling_factor = st.number_input("Enter Scaling Factor:", value=0.9594, format="%.4f")
     
-    scaling_factor = None
-    if need_scaling == "Yes":
-        scaling_factor = st.sidebar.number_input("Enter Scaling Factor:", value=0.9594, format="%.4f")
-    
+    st.write("")
     st.markdown('<p class="section-header">1. Primary System (Monomer 1)</p>', unsafe_allow_html=True)
     with st.container(border=True):
         col_m1, _ = st.columns([1, 1])
         with col_m1:
             m1_file = st.file_uploader("Upload Monomer 1 .log file (e.g., Amino Acid)", type=["log", "out"], key="str_m1")
+            
+            # --- 3D MOLECULE VIEWER M1 ---
+            if m1_file:
+                if HAS_3D:
+                    st.markdown("**👁️ Monomer 1 Structure & Atoms**")
+                    show_3d_molecule(m1_file.getvalue().decode('utf-8'))
+                else:
+                    st.error("🚨 Missing Required Packages! To see the 3D molecule viewer, you must add `stmol` and `py3Dmol` to your `requirements.txt` file (if on Streamlit Cloud) or run `pip install stmol py3Dmol` on your computer.")
+            
             m1_bonds = st.number_input("Number of target bonds in Monomer 1:", min_value=0, max_value=5, value=2)
             m1_bond_data = []
             for b in range(m1_bonds):
@@ -983,6 +1052,13 @@ elif st.session_state.app_mode == "Structural Analysis":
             c_m2, c_comp = st.columns([1, 1])
             with c_m2:
                 m2_file = st.file_uploader(f"Upload Monomer 2 .log file (Solvent {i+1})", type=["log", "out"], key=f"str_m2_{i}")
+                
+                # --- 3D MOLECULE VIEWER M2 ---
+                if m2_file:
+                    if HAS_3D:
+                        st.markdown(f"**👁️ Monomer 2 Structure & Atoms**")
+                        show_3d_molecule(m2_file.getvalue().decode('utf-8'))
+
                 m2_bonds = st.number_input(f"Number of target bonds in Monomer 2 (System {i+1}):", min_value=0, max_value=5, value=1, key=f"m2_b_cnt_{i}")
                 m2_bond_data = []
                 for b in range(m2_bonds):
@@ -993,6 +1069,13 @@ elif st.session_state.app_mode == "Structural Analysis":
                     
             with c_comp:
                 c_file = st.file_uploader(f"Upload Complex .log file (M1 + Solvent {i+1})", type=["log", "out"], key=f"str_c_{i}")
+                
+                # --- 3D MOLECULE VIEWER COMPLEX ---
+                if c_file:
+                    if HAS_3D:
+                        st.markdown(f"**👁️ Complex Structure & Atoms**")
+                        show_3d_molecule(c_file.getvalue().decode('utf-8'))
+                            
                 st.markdown("**Atoms in Complex:**")
                 
                 m1_d_atoms = []
@@ -1159,7 +1242,6 @@ elif st.session_state.app_mode == "Structural Analysis":
         st.session_state.extracted_rows_struct = extracted_rows
         st.session_state.bond_names_struct = all_bond_names
         st.session_state.excel_data_struct = output.getvalue()
-        # Save scaling factor state for table rendering on rerun
         st.session_state.applied_scaling_factor = scaling_factor 
         st.session_state.calc_done_struct = True
         st.rerun()
