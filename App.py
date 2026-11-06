@@ -732,6 +732,7 @@ elif st.session_state.app_mode == "NBO E(2) Analysis":
             header_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
+            section_format = workbook.add_format({'bold': True, 'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
             if all_top_n_data:
                 ws_top = workbook.add_worksheet(f'Top {top_n} Interactions')
                 top_n_columns = ["System", "Interaction Section", "Donor NBO (i)", "Acceptor NBO (j)", "E(2) kcal/mol", "E(j)-E(i) a.u.", "F(i,j) a.u."]
@@ -1021,18 +1022,9 @@ elif st.session_state.app_mode == "Structural Analysis":
     st.write("")
     st.markdown('<p class="section-header">1. Primary System (Monomer 1)</p>', unsafe_allow_html=True)
     with st.container(border=True):
-        col_m1, _ = st.columns([1, 1])
-        with col_m1:
+        col_m1_inputs, col_m1_view = st.columns([1, 1])
+        with col_m1_inputs:
             m1_file = st.file_uploader("Upload Monomer 1 .log file (e.g., Amino Acid)", type=["log", "out"], key="str_m1")
-            
-            # --- 3D MOLECULE VIEWER M1 ---
-            if m1_file:
-                if HAS_3D:
-                    st.markdown("**👁️ Monomer 1 Structure & Atoms**")
-                    show_3d_molecule(m1_file.getvalue().decode('utf-8'))
-                else:
-                    st.error("🚨 Missing Required Packages! To see the 3D molecule viewer, you must add `stmol` and `py3Dmol` to your `requirements.txt` file (if on Streamlit Cloud) or run `pip install stmol py3Dmol` on your computer.")
-            
             m1_bonds = st.number_input("Number of target bonds in Monomer 1:", min_value=0, max_value=5, value=2)
             m1_bond_data = []
             for b in range(m1_bonds):
@@ -1040,6 +1032,14 @@ elif st.session_state.app_mode == "Structural Analysis":
                 with c_name: b_name = st.text_input(f"Bond {b+1} Name (e.g., O-H, C=O)", key=f"m1_bname_{b}")
                 with c_atoms: b_atoms = st.text_input(f"Atom Numbers (e.g., 1, 17)", key=f"m1_batoms_{b}")
                 m1_bond_data.append({"name": b_name, "atoms_str": b_atoms})
+                
+        with col_m1_view:
+            if m1_file:
+                if HAS_3D:
+                    st.markdown("**👁️ Monomer 1 Structure & Atoms**")
+                    show_3d_molecule(m1_file.getvalue().decode('utf-8'))
+                else:
+                    st.error("🚨 Missing Required Packages! To see the 3D molecule viewer, you must add `stmol` and `py3Dmol` to your `requirements.txt` file (if on Streamlit Cloud) or run `pip install stmol py3Dmol` on your computer.")
 
     st.write("")
     st.markdown('<p class="section-header">2. Secondary Systems & Complexes</p>', unsafe_allow_html=True)
@@ -1053,11 +1053,10 @@ elif st.session_state.app_mode == "Structural Analysis":
             with c_m2:
                 m2_file = st.file_uploader(f"Upload Monomer 2 .log file (Solvent {i+1})", type=["log", "out"], key=f"str_m2_{i}")
                 
-                # --- 3D MOLECULE VIEWER M2 ---
                 if m2_file:
                     if HAS_3D:
-                        st.markdown(f"**👁️ Monomer 2 Structure & Atoms**")
-                        show_3d_molecule(m2_file.getvalue().decode('utf-8'))
+                        with st.expander(f"👁️ View Monomer 2 Structure & Atoms", expanded=True):
+                            show_3d_molecule(m2_file.getvalue().decode('utf-8'))
 
                 m2_bonds = st.number_input(f"Number of target bonds in Monomer 2 (System {i+1}):", min_value=0, max_value=5, value=1, key=f"m2_b_cnt_{i}")
                 m2_bond_data = []
@@ -1070,11 +1069,10 @@ elif st.session_state.app_mode == "Structural Analysis":
             with c_comp:
                 c_file = st.file_uploader(f"Upload Complex .log file (M1 + Solvent {i+1})", type=["log", "out"], key=f"str_c_{i}")
                 
-                # --- 3D MOLECULE VIEWER COMPLEX ---
                 if c_file:
                     if HAS_3D:
-                        st.markdown(f"**👁️ Complex Structure & Atoms**")
-                        show_3d_molecule(c_file.getvalue().decode('utf-8'))
+                        with st.expander(f"👁️ View Complex Structure & Atoms", expanded=True):
+                            show_3d_molecule(c_file.getvalue().decode('utf-8'))
                             
                 st.markdown("**Atoms in Complex:**")
                 
