@@ -6,6 +6,7 @@ import io
 import zipfile
 import shutil
 import subprocess
+import math
 from decimal import Decimal
 import pandas as pd
 import streamlit.components.v1 as components
@@ -36,8 +37,15 @@ except ImportError:
 HARTREE_TO_KCAL = Decimal('627.509')
 
 # ==========================================
-# 1. HELPER FUNCTIONS
+# 1. HELPER FUNCTIONS & GLOBAL PARSERS
 # ==========================================
+ATOMIC_SYMBOLS = {
+    1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N', 8: 'O', 9: 'F', 10: 'Ne',
+    11: 'Na', 12: 'Mg', 13: 'Al', 14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar',
+    19: 'K', 20: 'Ca', 24: 'Cr', 25: 'Mn', 26: 'Fe', 27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn',
+    35: 'Br', 53: 'I'
+}
+
 def extract_energy(uploaded_file, is_bsse=False):
     if uploaded_file is None: return None
     uploaded_file.seek(0)
@@ -52,8 +60,7 @@ def extract_energy(uploaded_file, is_bsse=False):
 
 def format_nbo(text):
     text = re.sub(r'^\s*\d+\.\s*', '', text)
-    text = re.sub(r'\(\s+', '(', text)
-    text = re.sub(r'\s+\)', ')', text)
+    text = re.sub(r'\(\s+', '(', text) text = re.sub(r'\s+\)', ')', text)
     text = re.sub(r'([A-Za-z\*]+)\s+(\d+)', r'\1\2', text)
     text = re.sub(r'\s{2,}', ' ', text)
     return text.strip()
@@ -76,6 +83,114 @@ def extract_led_values(uploaded_file, target_strings):
                 except (ValueError, IndexError): continue
     return extracted
 
+def get_optimized_coords(content):
+    coords = []
+    lines = content.splitlines()
+    for i in range(len(lines)-1, -1, -1):
+        if "Standard orientation:" in lines[i] or "Input orientation:" in lines[i]:
+            start_idx = i + 5
+            for j in range(start_idx, len(lines)):
+                if "---------------------------------------------------------------------" in lines[j]: break
+                parts = lines[j].split()
+                if len(parts) == 6:
+                    atom_num = int(parts[1])
+                    sym = ATOMIC_SYMBOLS.get(atom_num, 'X')
+                    coords.append({"idx": parts[0], "sym": sym, "x": parts[3], "y": parts[4], "z": parts[5]})
+            break
+    return coords
+
+def get_wfn_coords(content, is_wfx=False):
+    coords = []
+    BOHR_TO_ANG = 0.529177210903
+    lines = content.splitlines()
+    
+    if not is_wfx:
+        for line in lines:
+            if "CENTRE" in line and "COORD" in line:
+                match = re.search(r'CENTRE\s+(\d+)\s+\(ATOMIC NO\s*=\s*(\d+)\)\s+COORD\s*=\s*([-\.\dEe\+]+)\s+([-\.\dEe\+]+)\s+([-\.\dEe\+]+)', line, re.IGNORECASE)
+                if match:
+                    idx = match.group(1)
+                    atom_num = int(match.group(2))
+                    x = float(match.group(3)) * BOHR_TO_ANG
+                    y = float(match.group(4)) * BOHR_TO_ANG
+                    z = float(match.group(5)) * BOHR_TO_ANG
+                    sym = ATOMIC_SYMBOLS.get(atom_num, 'X')
+                    coords.append({"idx": idx, "sym": sym, "x": str(x), "y": str(y), "z": str(z)})
+    else:
+        in_atoms = False
+        in_coords = False
+        atomic_nums = []
+        raw_coords = []
+        for line in lines:
+            stripped = line.strip()
+            if "<Atomic Numbers>" in stripped: in_atoms = True; continue
+            if "</Atomic Numbers>" in stripped: in_atoms = False; continue
+            if "<Nuclear Cartesian Coordinates>" in stripped: in_coords = True; continue
+            if "</Nuclear Cartesian Coordinates>" in stripped: in_coords = False; continue
+            if in_atoms: atomic_nums.extend([int(x) for x in stripped.split()])
+            if in_coords: raw_coords.extend([float(x) for x in stripped.split()])
+                
+        if atomic_nums and raw_coords and len(raw_coords) == len(atomic_nums) * 3:
+            for i, atom_num in enumerate(atomic_nums):
+                x = raw_coords[i*3] * BOHR_TO_ANG
+                y = raw_coords[i*3+1] * BOHR_TO_ANG
+                z = raw_coords[i*3+2] * BOHR_TO_ANG
+                sym = ATOMIC_SYMBOLS.get(atom_num, 'X')
+                coords.append({"idx": str(i+1), "sym": sym, "x": str(x), "y": str(y), "z": str(z)})
+    return coords
+
+def show_3d_molecule_from_coords(coords):
+    if not coords: 
+        st.warning("Could not extract molecular coordinates for 3D viewer.")
+        return
+    xyz_str = f"{len(coords)}\n\n"
+    for c in coords: xyz_str += f"{c['sym']} {c['x']} {c['y']} {c['z']}\n"
+    view = py3Dmol.view(width=450, height=400)
+    view.addModel(xyz_str, 'xyz')
+    view.setStyle({'stick':{'radius': 0.15}, 'sphere':{'scale': 0.3}})
+    for c in coords:
+        view.addLabel(f"{c['sym']}{c['idx']}", {
+            "position": {"x": float(c['x']), "y": float(c['y']), "z": float(c['z'])},
+            "fontColor": "black", "backgroundColor": "white", "backgroundOpacity": 0.8, "fontsize": 14
+        })
+    view.zoomTo()
+    showmol(view, height=400, width=450)
+
+def calculate_distance(coord1, coord2):
+    return math.sqrt(sum((c1 - c2) ** 2 for c1, c2 in zip(coord1, coord2)))
+
+def find_stretching_frequency(content, atomA, atomB, coords_list):
+    # Convert list of dicts to a dict of tuples for math parsing
+    coords = {int(c['idx']): (float(c['x']), float(c['y']), float(c['z'])) for c in coords_list}
+    if not coords or atomA not in coords or atomB not in coords: return None
+    cA, cB = coords[atomA], coords[atomB]
+    dist = calculate_distance(cA, cB)
+    bond_vector = [(cB[0]-cA[0])/dist, (cB[1]-cA[1])/dist, (cB[2]-cA[2])/dist]
+    max_stretch, best_freq = -1.0, None
+    current_freqs = []
+    current_disps = {}
+    lines = content.splitlines()
+    for line in lines:
+        if "Frequencies --" in line:
+            current_freqs = [float(x) for x in line.split()[2:]]
+            current_disps = {} 
+        elif current_freqs and len(line.split()) >= 11 and "Atom" not in line:
+            parts = line.split()
+            if not parts[0].isdigit(): continue
+            try:
+                atom_idx = int(parts[0])
+                if atom_idx in (atomA, atomB):
+                    current_disps[atom_idx] = [(float(parts[2+m*3]), float(parts[3+m*3]), float(parts[4+m*3])) for m in range(len(current_freqs))]
+                    if atomA in current_disps and atomB in current_disps:
+                        disp_A, disp_B = current_disps[atomA], current_disps[atomB]
+                        for m in range(len(current_freqs)):
+                            rel = (disp_B[m][0]-disp_A[m][0], disp_B[m][1]-disp_A[m][1], disp_B[m][2]-disp_A[m][2])
+                            stretch = abs(rel[0]*bond_vector[0] + rel[1]*bond_vector[1] + rel[2]*bond_vector[2])
+                            if stretch > max_stretch:
+                                max_stretch, best_freq = stretch, current_freqs[m]
+            except ValueError: continue
+    return best_freq
+
 # ==========================================
 # 2. PAGE CONFIG & CSS (Global)
 # ==========================================
@@ -94,7 +209,6 @@ st.markdown("""
     .main-title { font-size: 3.2rem; color: #1E3A8A; font-weight: 800; margin-bottom: 5px; font-family: 'Segoe UI', sans-serif; }
     .sub-title { font-size: 1.1rem; color: #4B5563; font-family: 'Segoe UI', sans-serif; }
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
-    
     button[kind="primary"] { background-color: #1E3A8A !important; color: #FFFFFF !important; border: none !important; border-radius: 6px !important; font-weight: 700 !important; padding: 8px 16px !important; transition: all 0.3s ease-in-out !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; }
     button[kind="primary"]:hover { background-color: #2563EB !important; transform: translateY(-2px); }
     button[kind="secondary"] { border-radius: 6px !important; font-weight: 600 !important; transition: all 0.2s ease-in-out !important; }
@@ -134,17 +248,17 @@ if st.session_state.app_mode == "Home":
     c_space_l, c_btn_1, c_btn_2, c_btn_3, c_space_r = st.columns([1, 4, 4, 4, 1])
     
     with c_btn_1:
-        if st.button("🔬 Interaction Energy", use_container_width=True, type="secondary"): 
+        if st.button("🔬 Interaction Energy Extractor", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "Interaction Energy"; st.rerun()
         st.write("")
-        if st.button("⚛️ NBO E(2) Analysis", use_container_width=True, type="secondary"): 
+        if st.button("⚛️ NBO E(2) Extractor", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "NBO E(2) Analysis"; st.rerun()
             
     with c_btn_2:
-        if st.button("📊 LED Parser", use_container_width=True, type="secondary"): 
+        if st.button("📊 LED Data Parser", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "LED Analysis"; st.rerun()
         st.write("")
-        if st.button("📏 Vibrational Data", use_container_width=True, type="secondary"): 
+        if st.button("📏 Vibrational Analysis", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "Structural Analysis"; st.rerun()
             
     with c_btn_3:
@@ -163,6 +277,7 @@ if st.session_state.app_mode == "Home":
         Automated tools for parsing outputs from Gaussian, ORCA, and Multiwfn.
     </div>
     """, unsafe_allow_html=True)
+
 
 # ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
@@ -845,7 +960,6 @@ elif st.session_state.app_mode == "QTAIM Analysis":
 # 8. APP MODE 5: STRUCTURAL & VIBRATIONAL ANALYSIS
 # ==========================================
 elif st.session_state.app_mode == "Structural Analysis":
-    import math
     st.markdown('<div class="home-btn-container">', unsafe_allow_html=True)
     col_home, _ = st.columns([1, 6])
     with col_home:
@@ -854,99 +968,6 @@ elif st.session_state.app_mode == "Structural Analysis":
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown('<div class="main-header-container"><div class="main-title">📏 Structural & Vibrational Data Analysis</div><div class="sub-title">Track bond lengths and stretching frequencies from Gaussian log files.</div></div>', unsafe_allow_html=True)
-    
-    # --- HELPER FUNCTIONS FOR THIS MODULE ---
-    ATOMIC_SYMBOLS = {
-        1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N', 8: 'O', 9: 'F', 10: 'Ne',
-        11: 'Na', 12: 'Mg', 13: 'Al', 14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar',
-        19: 'K', 20: 'Ca', 24: 'Cr', 25: 'Mn', 26: 'Fe', 27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn',
-        35: 'Br', 53: 'I'
-    }
-
-    def get_optimized_coords(content):
-        coords = {}
-        lines = content.splitlines()
-        for i in range(len(lines)-1, -1, -1):
-            if "Standard orientation:" in lines[i] or "Input orientation:" in lines[i]:
-                start_idx = i + 5
-                for j in range(start_idx, len(lines)):
-                    if "---------------------------------------------------------------------" in lines[j]: break
-                    parts = lines[j].split()
-                    if len(parts) == 6: coords[int(parts[0])] = (float(parts[3]), float(parts[4]), float(parts[5]))
-                break
-        return coords
-
-    def show_3d_molecule(content):
-        lines = content.splitlines()
-        coords = []
-        for i in range(len(lines)-1, -1, -1):
-            if "Standard orientation:" in lines[i] or "Input orientation:" in lines[i]:
-                start_idx = i + 5
-                for j in range(start_idx, len(lines)):
-                    if "---------------------------------------------------------------------" in lines[j]: break
-                    parts = lines[j].split()
-                    if len(parts) == 6:
-                        atom_num = int(parts[1])
-                        sym = ATOMIC_SYMBOLS.get(atom_num, 'X')
-                        coords.append({"idx": parts[0], "sym": sym, "x": parts[3], "y": parts[4], "z": parts[5]})
-                break
-        
-        if not coords: 
-            st.warning("Could not extract molecular coordinates for 3D viewer.")
-            return
-        
-        xyz_str = f"{len(coords)}\n\n"
-        for c in coords:
-            xyz_str += f"{c['sym']} {c['x']} {c['y']} {c['z']}\n"
-            
-        view = py3Dmol.view(width=450, height=400)
-        view.addModel(xyz_str, 'xyz')
-        view.setStyle({'stick':{'radius': 0.15}, 'sphere':{'scale': 0.3}})
-        
-        for c in coords:
-            view.addLabel(f"{c['sym']}{c['idx']}", {
-                "position": {"x": float(c['x']), "y": float(c['y']), "z": float(c['z'])},
-                "fontColor": "black",
-                "backgroundColor": "white",
-                "backgroundOpacity": 0.8,
-                "fontsize": 14
-            })
-            
-        view.zoomTo()
-        showmol(view, height=400, width=450)
-
-    def calculate_distance(coord1, coord2):
-        return math.sqrt(sum((c1 - c2) ** 2 for c1, c2 in zip(coord1, coord2)))
-
-    def find_stretching_frequency(content, atomA, atomB, coords):
-        if not coords or atomA not in coords or atomB not in coords: return None
-        cA, cB = coords[atomA], coords[atomB]
-        dist = calculate_distance(cA, cB)
-        bond_vector = [(cB[0]-cA[0])/dist, (cB[1]-cA[1])/dist, (cB[2]-cA[2])/dist]
-        max_stretch, best_freq = -1.0, None
-        current_freqs = []
-        current_disps = {}
-        lines = content.splitlines()
-        for line in lines:
-            if "Frequencies --" in line:
-                current_freqs = [float(x) for x in line.split()[2:]]
-                current_disps = {} 
-            elif current_freqs and len(line.split()) >= 11 and "Atom" not in line:
-                parts = line.split()
-                if not parts[0].isdigit(): continue
-                try:
-                    atom_idx = int(parts[0])
-                    if atom_idx in (atomA, atomB):
-                        current_disps[atom_idx] = [(float(parts[2+m*3]), float(parts[3+m*3]), float(parts[4+m*3])) for m in range(len(current_freqs))]
-                        if atomA in current_disps and atomB in current_disps:
-                            disp_A, disp_B = current_disps[atomA], current_disps[atomB]
-                            for m in range(len(current_freqs)):
-                                rel = (disp_B[m][0]-disp_A[m][0], disp_B[m][1]-disp_A[m][1], disp_B[m][2]-disp_A[m][2])
-                                stretch = abs(rel[0]*bond_vector[0] + rel[1]*bond_vector[1] + rel[2]*bond_vector[2])
-                                if stretch > max_stretch:
-                                    max_stretch, best_freq = stretch, current_freqs[m]
-                except ValueError: continue
-        return best_freq
 
     # --- UI LAYOUT ---
     st.markdown('<p class="section-header">⚙️ General Settings</p>', unsafe_allow_html=True)
@@ -977,9 +998,10 @@ elif st.session_state.app_mode == "Structural Analysis":
             if m1_file:
                 if HAS_3D:
                     st.markdown("**👁️ Monomer 1 Structure & Atoms**")
-                    show_3d_molecule(m1_file.getvalue().decode('utf-8'))
+                    coords = get_optimized_coords(m1_file.getvalue().decode('utf-8'))
+                    show_3d_molecule_from_coords(coords)
                 else:
-                    st.error("🚨 Missing Required Packages! To see the 3D molecule viewer, you must add `stmol` and `py3Dmol` to your `requirements.txt` file (if on Streamlit Cloud) or run `pip install stmol py3Dmol` on your computer.")
+                    st.error("🚨 Missing Required Packages! (stmol, py3Dmol)")
 
     st.write("")
     st.markdown('<p class="section-header">2. Secondary Systems & Complexes</p>', unsafe_allow_html=True)
@@ -996,7 +1018,8 @@ elif st.session_state.app_mode == "Structural Analysis":
                 if m2_file:
                     if HAS_3D:
                         with st.expander(f"👁️ View Monomer 2 Structure & Atoms", expanded=True):
-                            show_3d_molecule(m2_file.getvalue().decode('utf-8'))
+                            coords = get_optimized_coords(m2_file.getvalue().decode('utf-8'))
+                            show_3d_molecule_from_coords(coords)
 
                 m2_bonds = st.number_input(f"Number of target bonds in Monomer 2 (System {i+1}):", min_value=0, max_value=5, value=1, key=f"m2_b_cnt_{i}")
                 m2_bond_data = []
@@ -1012,7 +1035,8 @@ elif st.session_state.app_mode == "Structural Analysis":
                 if c_file:
                     if HAS_3D:
                         with st.expander(f"👁️ View Complex Structure & Atoms", expanded=True):
-                            show_3d_molecule(c_file.getvalue().decode('utf-8'))
+                            coords = get_optimized_coords(c_file.getvalue().decode('utf-8'))
+                            show_3d_molecule_from_coords(coords)
                             
                 st.markdown("**Atoms in Complex:**")
                 
@@ -1070,15 +1094,20 @@ elif st.session_state.app_mode == "Structural Analysis":
             try: atoms = tuple([int(x.strip()) for x in atom_str.split(",")])
             except: return None, None
             if len(atoms) != 2: return None, None
-            coords = get_optimized_coords(content)
-            if not coords:
+            
+            coords_list = get_optimized_coords(content)
+            if not coords_list:
                 st.session_state.warnings_struct.append(f"Standard/Input orientation not found in {file_name}.")
                 return None, None
+                
+            freq = find_stretching_frequency(content, atoms[0], atoms[1], coords_list)
+            
+            coords = {int(c['idx']): (float(c['x']), float(c['y']), float(c['z'])) for c in coords_list}
             if atoms[0] not in coords or atoms[1] not in coords:
                 st.session_state.warnings_struct.append(f"Atoms {atoms} for bond '{name}' not found in coordinates of {file_name}.")
                 return None, None
             dist = calculate_distance(coords[atoms[0]], coords[atoms[1]])
-            freq = find_stretching_frequency(content, atoms[0], atoms[1], coords)
+            
             if freq is None: st.session_state.warnings_struct.append(f"Stretching frequency for '{name}' not found in {file_name}.")
             return dist, freq
 
@@ -1215,7 +1244,6 @@ elif st.session_state.app_mode == "CVB Index":
     
     st.markdown('<div class="main-header-container"><div class="main-title">📈 Core Valence Bifurcation (CVB) Index</div><div class="sub-title">Automate Multiwfn to calculate CVB metrics directly from .wfn/.wfx files.</div></div>', unsafe_allow_html=True)
     
-    # Check if the binary was found and unzipped successfully
     if not os.path.exists("Multiwfn"):
         st.error("🚨 **Multiwfn Binary Missing:** The 'Multiwfn' executable was not found on the server. Please ensure Multiwfn.zip is uploaded to the root of your GitHub repository.")
         st.stop()
@@ -1226,8 +1254,23 @@ elif st.session_state.app_mode == "CVB Index":
     for i in range(num_cvb_systems):
         with st.container(border=True):
             col1, col2 = st.columns([2, 1])
-            with col1: w_file = st.file_uploader(f"Upload .wfn or .wfx File {i+1}", type=["wfn", "wfx"], key=f"cvb_wfn_{i}")
-            with col2: w_atoms = st.text_input("Target Atoms (e.g., 1,3,4)", key=f"cvb_atoms_{i}")
+            with col1: 
+                w_file = st.file_uploader(f"Upload .wfn or .wfx File {i+1}", type=["wfn", "wfx"], key=f"cvb_wfn_{i}")
+                if w_file:
+                    if HAS_3D:
+                        with st.expander("👁️ View Wavefunction Molecule & Atoms", expanded=True):
+                            content = w_file.getvalue().decode('utf-8')
+                            is_wfx = w_file.name.lower().endswith('.wfx')
+                            coords = get_wfn_coords(content, is_wfx)
+                            if coords:
+                                show_3d_molecule_from_coords(coords)
+                            else:
+                                st.warning("Could not extract coordinates for 3D view. Is the file formatted correctly?")
+                    else:
+                        st.error("🚨 Missing Required Packages! (stmol, py3Dmol)")
+                        
+            with col2: 
+                w_atoms = st.text_input("Target Atoms (e.g., 1,3,4)", key=f"cvb_atoms_{i}")
             cvb_inputs.append({"file": w_file, "atoms": w_atoms})
             
     st.divider()
@@ -1255,7 +1298,6 @@ elif st.session_state.app_mode == "CVB Index":
     if do_cvb_run:
         all_extracted_data = []
         
-        # Make a temporary directory to keep things clean
         tmp_dir = "temp_multiwfn"
         os.makedirs(tmp_dir, exist_ok=True)
         
@@ -1266,7 +1308,6 @@ elif st.session_state.app_mode == "CVB Index":
                 
                 if not w_file or not atoms: continue
                 
-                # 1. Save uploaded file to the temporary disk
                 file_path = os.path.join(tmp_dir, w_file.name)
                 with open(file_path, "wb") as f:
                     f.write(w_file.getbuffer())
@@ -1274,80 +1315,4 @@ elif st.session_state.app_mode == "CVB Index":
                 basename = os.path.splitext(w_file.name)[0]
                 system_name = basename.replace('_', ' - ')
                 
-                # 2. Pipe the exact keystrokes into Multiwfn
                 command_sequence = f"200\n1\n{atoms}\n0\nq\n"
-                
-                try:
-                    process = subprocess.run(
-                        ["./Multiwfn", file_path],
-                        input=command_sequence,
-                        capture_output=True,
-                        text=True,
-                        check=True
-                    )
-                    
-                    output_text = process.stdout
-                    
-                    # 3. Parse the output text directly from the terminal stream
-                    match_cv_d = re.search(r'donor.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'ELF\(C-V,\s*D\).*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE)
-                    match_cv_a = re.search(r'acceptor.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'ELF\(C-V,\s*A\).*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE)
-                    match_dh_a = re.search(r'between D-H and A.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'ELF\(DH-A\).*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'DH-A.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'minimum.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE)
-                    match_cvb = re.search(r'CVB index.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE) or re.search(r'CVB.*?([-+]?\d*\.\d+)', output_text, re.IGNORECASE)
-
-                    all_extracted_data.append({
-                        "System": system_name,
-                        "ELF(C-V,D)": float(match_cv_d.group(1)) if match_cv_d else None,
-                        "ELF(C-V,A)": float(match_cv_a.group(1)) if match_cv_a else None,
-                        "ELF(DH-A)": float(match_dh_a.group(1)) if match_dh_a else None,
-                        "CVB index": float(match_cvb.group(1)) if match_cvb else None
-                    })
-                    
-                except subprocess.CalledProcessError as e:
-                    st.error(f"Multiwfn crashed processing {w_file.name}: {e.stderr}")
-                finally:
-                    # Clean up the file off the server immediately
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-            
-            # Clean up temporary directory
-            if os.path.exists(tmp_dir):
-                os.rmdir(tmp_dir)
-
-        if not all_extracted_data:
-            st.error("No valid CVB data was extracted.")
-            st.stop()
-            
-        # 4. Generate the Excel File
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
-        worksheet = workbook.add_worksheet("CVB Data")
-        
-        header_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
-        center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12, 'num_format': '0.0000'})
-        left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
-        
-        headers = ["System", "ELF(C-V,D)", "ELF(C-V,A)", "ELF(DH-A)", "CVB index"]
-        worksheet.set_row(0, 24)
-        for col_num, header in enumerate(headers): worksheet.write(0, col_num, header, header_format)
-        worksheet.set_column('A:A', 35, left_format)
-        worksheet.set_column('B:E', 20, center_format)
-        
-        for row_num, row_data in enumerate(all_extracted_data, start=1):
-            worksheet.set_row(row_num, 20)
-            worksheet.write(row_num, 0, row_data["System"], left_format)
-            
-            for col_idx, key in enumerate(headers[1:], start=1):
-                val = row_data.get(key)
-                if val is not None: worksheet.write_number(row_num, col_idx, val, center_format)
-                else: worksheet.write(row_num, col_idx, "N/A", center_format)
-                
-        workbook.close()
-        
-        st.session_state.cvb_results = all_extracted_data
-        st.session_state.excel_data_cvb = output.getvalue()
-        st.session_state.calc_done_cvb = True
-        st.rerun()
-
-    if st.session_state.calc_done_cvb:
-        st.markdown('<p class="section-header" style="text-align: center; border: none;">Tabulated CVB Results</p>', unsafe_allow_html=True)
-        st.dataframe(pd.DataFrame(st.session_state.cvb_results).style.format(precision=4), use_container_width=True)
