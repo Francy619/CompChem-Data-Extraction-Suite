@@ -36,8 +36,90 @@ except ImportError:
 HARTREE_TO_KCAL = Decimal('627.509')
 
 # ==========================================
-# 1. HELPER FUNCTIONS
+# 1. HELPER FUNCTIONS & GLOBAL 3D VIEWER
 # ==========================================
+ATOMIC_SYMBOLS = {
+    1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N', 8: 'O', 9: 'F', 10: 'Ne',
+    11: 'Na', 12: 'Mg', 13: 'Al', 14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar',
+    19: 'K', 20: 'Ca', 24: 'Cr', 25: 'Mn', 26: 'Fe', 27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn',
+    35: 'Br', 53: 'I'
+}
+
+def show_3d_molecule(content, filename=""):
+    lines = content.splitlines()
+    coords = []
+    ext = os.path.splitext(filename)[1].lower()
+
+    if ext == '.wfn':
+        # Convert Bohr to Angstroms for visualization
+        BOHR_TO_ANG = 0.529177249
+        for line in lines:
+            match = re.search(r'([A-Za-z]{1,2})\s+(\d+)\s+\(CENTRE\s+\d+\)\s+X=\s*([\-\d\.]+)\s+Y=\s*([\-\d\.]+)\s+Z=\s*([\-\d\.]+)', line, re.IGNORECASE)
+            if match:
+                coords.append({
+                    "idx": match.group(2), "sym": match.group(1).capitalize(), 
+                    "x": float(match.group(3)) * BOHR_TO_ANG, 
+                    "y": float(match.group(4)) * BOHR_TO_ANG, 
+                    "z": float(match.group(5)) * BOHR_TO_ANG
+                })
+    elif ext == '.wfx':
+        BOHR_TO_ANG = 0.529177249
+        names, xyz = [], []
+        in_names, in_coords = False, False
+        for line in lines:
+            if "<AtomicNames>" in line: in_names = True; continue
+            if "</AtomicNames>" in line: in_names = False; continue
+            if "<NuclearCartesianCoordinates>" in line: in_coords = True; continue
+            if "</NuclearCartesianCoordinates>" in line: in_coords = False; continue
+            
+            if in_names: names.extend([re.sub(r'[^A-Za-z]', '', n).capitalize() for n in line.split() if re.sub(r'[^A-Za-z]', '', n)])
+            if in_coords: xyz.extend([float(v) for v in line.split() if any(c.isdigit() for c in v)])
+                
+        if names and len(xyz) == len(names) * 3:
+            for i, name in enumerate(names):
+                coords.append({
+                    "idx": str(i+1), "sym": name, 
+                    "x": xyz[i*3] * BOHR_TO_ANG, "y": xyz[i*3+1] * BOHR_TO_ANG, "z": xyz[i*3+2] * BOHR_TO_ANG
+                })
+    else:
+        # Default Log / Out file parsing
+        for i in range(len(lines)-1, -1, -1):
+            if "Standard orientation:" in lines[i] or "Input orientation:" in lines[i]:
+                start_idx = i + 5
+                for j in range(start_idx, len(lines)):
+                    if "---------------------------------------------------------------------" in lines[j]: break
+                    parts = lines[j].split()
+                    if len(parts) == 6:
+                        atom_num = int(parts[1])
+                        sym = ATOMIC_SYMBOLS.get(atom_num, 'X')
+                        coords.append({"idx": parts[0], "sym": sym, "x": parts[3], "y": parts[4], "z": parts[5]})
+                break
+                
+    if not coords: 
+        st.warning("Could not extract molecular coordinates for 3D viewer.")
+        return
+
+    xyz_str = f"{len(coords)}\n\n"
+    for c in coords:
+        xyz_str += f"{c['sym']} {c['x']} {c['y']} {c['z']}\n"
+        
+    view = py3Dmol.view(width=450, height=400)
+    view.addModel(xyz_str, 'xyz')
+    view.setStyle({'stick':{'radius': 0.15}, 'sphere':{'scale': 0.3}})
+    
+    for c in coords:
+        view.addLabel(f"{c['sym']}{c['idx']}", {
+            "position": {"x": float(c['x']), "y": float(c['y']), "z": float(c['z'])},
+            "fontColor": "black",
+            "backgroundColor": "white",
+            "backgroundOpacity": 0.8,
+            "fontsize": 14
+        })
+        
+    view.zoomTo()
+    showmol(view, height=400, width=450)
+
+
 def extract_energy(uploaded_file, is_bsse=False):
     if uploaded_file is None: return None
     uploaded_file.seek(0)
@@ -134,24 +216,24 @@ if st.session_state.app_mode == "Home":
     c_space_l, c_btn_1, c_btn_2, c_btn_3, c_space_r = st.columns([1, 4, 4, 4, 1])
     
     with c_btn_1:
-        if st.button("🔬 Interaction Energy", use_container_width=True, type="secondary"): 
+        if st.button("🔬 Interaction Energy Extractor", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "Interaction Energy"; st.rerun()
         st.write("")
-        if st.button("⚛️ NBO E(2) Analysis", use_container_width=True, type="secondary"): 
+        if st.button("⚛️ NBO E(2) Extractor", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "NBO E(2) Analysis"; st.rerun()
             
     with c_btn_2:
-        if st.button("📊 LED Parser", use_container_width=True, type="secondary"): 
+        if st.button("📊 LED Data Parser", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "LED Analysis"; st.rerun()
         st.write("")
-        if st.button("📏 Vibrational Data", use_container_width=True, type="secondary"): 
+        if st.button("📏 Vibrational Analysis", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "Structural Analysis"; st.rerun()
             
     with c_btn_3:
         if st.button("⭕ QTAIM Properties", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "QTAIM Analysis"; st.rerun()
         st.write("")
-        if st.button("📈 CVB Index (Multiwfn)", use_container_width=True, type="secondary"): 
+        if st.button("📈 CVB Index Extractor", use_container_width=True, type="secondary"): 
             st.session_state.app_mode = "CVB Index"; st.rerun()
             
     st.markdown("""
@@ -856,13 +938,6 @@ elif st.session_state.app_mode == "Structural Analysis":
     st.markdown('<div class="main-header-container"><div class="main-title">📏 Structural & Vibrational Data Analysis</div><div class="sub-title">Track bond lengths and stretching frequencies from Gaussian log files.</div></div>', unsafe_allow_html=True)
     
     # --- HELPER FUNCTIONS FOR THIS MODULE ---
-    ATOMIC_SYMBOLS = {
-        1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N', 8: 'O', 9: 'F', 10: 'Ne',
-        11: 'Na', 12: 'Mg', 13: 'Al', 14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar',
-        19: 'K', 20: 'Ca', 24: 'Cr', 25: 'Mn', 26: 'Fe', 27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn',
-        35: 'Br', 53: 'I'
-    }
-
     def get_optimized_coords(content):
         coords = {}
         lines = content.splitlines()
@@ -875,45 +950,6 @@ elif st.session_state.app_mode == "Structural Analysis":
                     if len(parts) == 6: coords[int(parts[0])] = (float(parts[3]), float(parts[4]), float(parts[5]))
                 break
         return coords
-
-    def show_3d_molecule(content):
-        lines = content.splitlines()
-        coords = []
-        for i in range(len(lines)-1, -1, -1):
-            if "Standard orientation:" in lines[i] or "Input orientation:" in lines[i]:
-                start_idx = i + 5
-                for j in range(start_idx, len(lines)):
-                    if "---------------------------------------------------------------------" in lines[j]: break
-                    parts = lines[j].split()
-                    if len(parts) == 6:
-                        atom_num = int(parts[1])
-                        sym = ATOMIC_SYMBOLS.get(atom_num, 'X')
-                        coords.append({"idx": parts[0], "sym": sym, "x": parts[3], "y": parts[4], "z": parts[5]})
-                break
-        
-        if not coords: 
-            st.warning("Could not extract molecular coordinates for 3D viewer.")
-            return
-        
-        xyz_str = f"{len(coords)}\n\n"
-        for c in coords:
-            xyz_str += f"{c['sym']} {c['x']} {c['y']} {c['z']}\n"
-            
-        view = py3Dmol.view(width=450, height=400)
-        view.addModel(xyz_str, 'xyz')
-        view.setStyle({'stick':{'radius': 0.15}, 'sphere':{'scale': 0.3}})
-        
-        for c in coords:
-            view.addLabel(f"{c['sym']}{c['idx']}", {
-                "position": {"x": float(c['x']), "y": float(c['y']), "z": float(c['z'])},
-                "fontColor": "black",
-                "backgroundColor": "white",
-                "backgroundOpacity": 0.8,
-                "fontsize": 14
-            })
-            
-        view.zoomTo()
-        showmol(view, height=400, width=450)
 
     def calculate_distance(coord1, coord2):
         return math.sqrt(sum((c1 - c2) ** 2 for c1, c2 in zip(coord1, coord2)))
@@ -977,7 +1013,7 @@ elif st.session_state.app_mode == "Structural Analysis":
             if m1_file:
                 if HAS_3D:
                     st.markdown("**👁️ Monomer 1 Structure & Atoms**")
-                    show_3d_molecule(m1_file.getvalue().decode('utf-8'))
+                    show_3d_molecule(m1_file.getvalue().decode('utf-8'), m1_file.name)
                 else:
                     st.error("🚨 Missing Required Packages! To see the 3D molecule viewer, you must add `stmol` and `py3Dmol` to your `requirements.txt` file (if on Streamlit Cloud) or run `pip install stmol py3Dmol` on your computer.")
 
@@ -996,7 +1032,7 @@ elif st.session_state.app_mode == "Structural Analysis":
                 if m2_file:
                     if HAS_3D:
                         with st.expander(f"👁️ View Monomer 2 Structure & Atoms", expanded=True):
-                            show_3d_molecule(m2_file.getvalue().decode('utf-8'))
+                            show_3d_molecule(m2_file.getvalue().decode('utf-8'), m2_file.name)
 
                 m2_bonds = st.number_input(f"Number of target bonds in Monomer 2 (System {i+1}):", min_value=0, max_value=5, value=1, key=f"m2_b_cnt_{i}")
                 m2_bond_data = []
@@ -1012,7 +1048,7 @@ elif st.session_state.app_mode == "Structural Analysis":
                 if c_file:
                     if HAS_3D:
                         with st.expander(f"👁️ View Complex Structure & Atoms", expanded=True):
-                            show_3d_molecule(c_file.getvalue().decode('utf-8'))
+                            show_3d_molecule(c_file.getvalue().decode('utf-8'), c_file.name)
                             
                 st.markdown("**Atoms in Complex:**")
                 
@@ -1202,6 +1238,7 @@ elif st.session_state.app_mode == "Structural Analysis":
         display_df = pd.DataFrame(df_data)
         st.dataframe(display_df.style.format(precision=4), use_container_width=True)
 
+
 # ==========================================
 # 9. APP MODE 6: CVB INDEX EXTRACTOR
 # ==========================================
@@ -1225,9 +1262,19 @@ elif st.session_state.app_mode == "CVB Index":
     cvb_inputs = []
     for i in range(num_cvb_systems):
         with st.container(border=True):
-            col1, col2 = st.columns([2, 1])
-            with col1: w_file = st.file_uploader(f"Upload .wfn or .wfx File {i+1}", type=["wfn", "wfx"], key=f"cvb_wfn_{i}")
-            with col2: w_atoms = st.text_input("Target Atoms (e.g., 1,3,4)", key=f"cvb_atoms_{i}")
+            col_cvb_inputs, col_cvb_view = st.columns([1, 1])
+            with col_cvb_inputs:
+                w_file = st.file_uploader(f"Upload .wfn or .wfx File {i+1}", type=["wfn", "wfx"], key=f"cvb_wfn_{i}")
+                w_atoms = st.text_input("Target Atoms (e.g., 1,3,4)", key=f"cvb_atoms_{i}")
+                
+            with col_cvb_view:
+                if w_file:
+                    if HAS_3D:
+                        st.markdown("**👁️ Molecule Structure & Atoms**")
+                        show_3d_molecule(w_file.getvalue().decode('utf-8'), w_file.name)
+                    else:
+                        st.error("🚨 Missing Required Packages! To see the 3D molecule viewer, you must add `stmol` and `py3Dmol` to your `requirements.txt` file.")
+            
             cvb_inputs.append({"file": w_file, "atoms": w_atoms})
             
     st.divider()
