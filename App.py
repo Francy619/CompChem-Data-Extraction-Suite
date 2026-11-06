@@ -3,27 +3,9 @@ import os
 import re
 import xlsxwriter
 import io
-import zipfile
-import shutil
-import subprocess
 from decimal import Decimal
 import pandas as pd
 import streamlit.components.v1 as components
-
-# --- AUTO-EXTRACT MULTIWFN (HANDLES FOLDERS INSIDE ZIP) ---
-if not os.path.exists("Multiwfn") and os.path.exists("Multiwfn.zip"):
-    with zipfile.ZipFile("Multiwfn.zip", 'r') as zip_ref:
-        zip_ref.extractall(".")
-    
-    for root, dirs, files in os.walk("."):
-        if "Multiwfn" in files:
-            file_path = os.path.join(root, "Multiwfn")
-            if os.path.abspath(file_path) != os.path.abspath("Multiwfn"):
-                shutil.move(file_path, "Multiwfn")
-            break
-            
-    if os.path.exists("Multiwfn"):
-        os.chmod("Multiwfn", 0o755)
 
 # --- IMPORTS FOR 3D RENDERING ---
 try:
@@ -52,7 +34,8 @@ def extract_energy(uploaded_file, is_bsse=False):
 
 def format_nbo(text):
     text = re.sub(r'^\s*\d+\.\s*', '', text)
-    text = re.sub(r'\(\s+', '(', text) text = re.sub(r'\s+\)', ')', text)
+    text = re.sub(r'\(\s+', '(', text)
+    text = re.sub(r'\s+\)', ')', text)
     text = re.sub(r'([A-Za-z\*]+)\s+(\d+)', r'\1\2', text)
     text = re.sub(r'\s{2,}', ' ', text)
     return text.strip()
@@ -75,23 +58,21 @@ def extract_led_values(uploaded_file, target_strings):
                 except (ValueError, IndexError): continue
     return extracted
 
-def parse_system_name(filename):
-    basename = os.path.splitext(filename)[0]
-    match = re.search(r'-([\d,\s]+)$', basename)
-    if match:
-        return basename[:match.start()].replace('_', ' - ')
-    return basename.replace('_', ' - ')
-
 # ==========================================
 # 2. PAGE CONFIG & CSS (Global)
 # ==========================================
 st.set_page_config(page_title="Computational Chemistry Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
+# ---------------------------------------------------------
+# CRITICAL FIX: Initialize Session State before rendering
+# ---------------------------------------------------------
 if 'app_mode' not in st.session_state: 
     st.session_state.app_mode = "Home"
+# ---------------------------------------------------------
 
 st.markdown("""
 <style>
+    /* --- Hide Streamlit Branding & Overlays --- */
     footer, [data-testid="stFooter"], .stStatusWidget {
         display: none !important;
         visibility: hidden !important;
@@ -100,27 +81,62 @@ st.markdown("""
     }
     button[title="View fullscreen"] { display: none !important; }
     header { visibility: hidden !important; display: none !important; }
+    
+    /* Hide sidebar completely for full screen feel */
     [data-testid="collapsedControl"] { display: none; }
+    
     .main-header-container { text-align: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid #E2E8F0; }
     .main-title { font-size: 3.2rem; color: #1E3A8A; font-weight: 800; margin-bottom: 5px; font-family: 'Segoe UI', sans-serif; }
     .sub-title { font-size: 1.1rem; color: #4B5563; font-family: 'Segoe UI', sans-serif; }
     .section-header { font-size: 1.1rem; color: #1E3A8A; font-weight: 700; margin-bottom: 10px; }
     
+    /* Global Action Buttons (Primary) - NORMAL SIZE */
     button[kind="primary"] { 
-        background-color: #1E3A8A !important; color: #FFFFFF !important; border: none !important; 
-        border-radius: 6px !important; font-weight: 700 !important; padding: 8px 16px !important; 
-        transition: all 0.3s ease-in-out !important; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; 
+        background-color: #1E3A8A !important; 
+        color: #FFFFFF !important; 
+        border: none !important; 
+        border-radius: 6px !important; 
+        font-weight: 700 !important; 
+        padding: 8px 16px !important; 
+        transition: all 0.3s ease-in-out !important; 
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important; 
     }
-    button[kind="primary"]:hover { background-color: #2563EB !important; transform: translateY(-2px); }
+    button[kind="primary"]:hover { 
+        background-color: #2563EB !important; 
+        transform: translateY(-2px); 
+    }
     
-    button[kind="secondary"] { border-radius: 6px !important; font-weight: 600 !important; transition: all 0.2s ease-in-out !important; }
-    button[kind="secondary"]:hover { border-color: #1E3A8A !important; color: #1E3A8A !important; }
+    /* Global Secondary Buttons (Upload, Back to Home) - NORMAL SIZE */
+    button[kind="secondary"] {
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    button[kind="secondary"]:hover {
+        border-color: #1E3A8A !important;
+        color: #1E3A8A !important;
+    }
     
-    [data-testid="stFileUploaderDropzone"] > div { display: flex !important; flex-direction: row !important; align-items: center !important; flex-wrap: nowrap !important; gap: 10px !important; padding: 10px !important; }
-    [data-testid="stFileUploaderDropzone"] small { white-space: nowrap !important; margin-top: 0 !important; font-size: 0.85rem !important; }
+    /* Force File Uploader Elements into a Single Horizontal Row */
+    [data-testid="stFileUploaderDropzone"] > div {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+        gap: 10px !important;
+        padding: 10px !important;
+    }
+    
+    /* Prevent the helper text from breaking into multiple lines */
+    [data-testid="stFileUploaderDropzone"] small {
+        white-space: nowrap !important;
+        margin-top: 0 !important;
+        font-size: 0.85rem !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
+# JavaScript injection to aggressively remove iframe footers
 components.html("""
     <script>
         const removeFooter = setInterval(() => {
@@ -135,39 +151,68 @@ components.html("""
 # 3. HOME DASHBOARD (FULL SCREEN)
 # ==========================================
 if st.session_state.app_mode == "Home":
+    
+    # Inject MASSIVE button CSS *only* for the Home Page
     st.markdown("""
     <style>
-        .menu-title { font-size: 4.8rem; font-weight: 600; color: #1E3A8A; text-align: center; margin-top: 20px; margin-bottom: 40px; font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif; line-height: 1.1; letter-spacing: 2px; }
+        .menu-title { 
+            font-size: 4.8rem; font-weight: 600; color: #1E3A8A; text-align: center; 
+            margin-top: 20px; margin-bottom: 40px; 
+            font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif; 
+            line-height: 1.1; letter-spacing: 2px; 
+        }
         .footer-text { text-align: center; color: #64748B; font-size: 1rem; margin-top: 80px; border-top: 1px solid #E2E8F0; padding-top: 30px;}
+        
         [data-testid="stAppViewContainer"] { overflow-y: hidden !important; }
-        button[kind="secondary"] { background-color: #1E3A8A !important; color: #FFFFFF !important; border: none !important; border-radius: 8px !important; font-weight: 800 !important; font-size: 2.4rem !important; min-height: 100px !important; padding: 30px 20px !important; box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important; }
-        button[kind="secondary"]:hover { background-color: #2563EB !important; color: #FFFFFF !important; transform: translateY(-6px) !important; box-shadow: 0 12px 20px rgba(37, 99, 235, 0.3) !important; }
+        
+        /* Override secondary buttons ONLY on this page to make them giant blue blocks */
+        button[kind="secondary"] { 
+            background-color: #1E3A8A !important; 
+            color: #FFFFFF !important; 
+            border: none !important; 
+            border-radius: 8px !important; 
+            font-weight: 800 !important; 
+            font-size: 2.4rem !important; 
+            min-height: 100px !important;
+            padding: 30px 20px !important; 
+            box-shadow: 0 6px 12px rgba(30, 58, 138, 0.2) !important;
+        }
+        button[kind="secondary"]:hover { 
+            background-color: #2563EB !important; 
+            color: #FFFFFF !important; 
+            transform: translateY(-6px) !important;
+            box-shadow: 0 12px 20px rgba(37, 99, 235, 0.3) !important;
+        }
     </style>
     """, unsafe_allow_html=True)
         
     st.markdown('<p class="menu-title">CompChem Data Extraction Suite</p>', unsafe_allow_html=True)
     st.write("")
     
+    # Centered 2x2 Grid for Buttons
     c_space_l, c_btn_1, c_btn_2, c_space_r = st.columns([1, 3, 3, 1])
+    
     with c_btn_1:
         if st.button("🔬 Interaction Energy Extractor", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "Interaction Energy"; st.rerun()
+            st.session_state.app_mode = "Interaction Energy"
+            st.rerun()
         st.write("")
         if st.button("⚛️ NBO E(2) Extractor", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "NBO E(2) Analysis"; st.rerun()
+            st.session_state.app_mode = "NBO E(2) Analysis"
+            st.rerun()
         st.write("")
         if st.button("📏 Vibrational Analysis", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "Structural Analysis"; st.rerun()
+            st.session_state.app_mode = "Structural Analysis"
+            st.rerun()
             
     with c_btn_2:
         if st.button("📊 LED Data Parser", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "LED Analysis"; st.rerun()
+            st.session_state.app_mode = "LED Analysis"
+            st.rerun()
         st.write("")
         if st.button("⭕ QTAIM Properties Tabulator", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "QTAIM Analysis"; st.rerun()
-        st.write("")
-        if st.button("📈 CVB Index Extractor (Multiwfn)", use_container_width=True, type="secondary"): 
-            st.session_state.app_mode = "CVB Analysis"; st.rerun()
+            st.session_state.app_mode = "QTAIM Analysis"
+            st.rerun()
             
     st.markdown("""
     <div class="footer-text">
@@ -178,7 +223,6 @@ if st.session_state.app_mode == "Home":
         Automated tools for parsing outputs from Gaussian, ORCA, and Multiwfn.
     </div>
     """, unsafe_allow_html=True)
-
 
 # ==========================================
 # 4. APP MODE 1: INTERACTION ENERGY
@@ -995,7 +1039,7 @@ elif st.session_state.app_mode == "Structural Analysis":
                     st.markdown("**👁️ Monomer 1 Structure & Atoms**")
                     show_3d_molecule(m1_file.getvalue().decode('utf-8'))
                 else:
-                    st.error("🚨 Missing Required Packages! To see the 3D molecule viewer, you must add `stmol` and `py3Dmol` to your `requirements.txt` file.")
+                    st.error("🚨 Missing Required Packages! To see the 3D molecule viewer, you must add `stmol` and `py3Dmol` to your `requirements.txt` file (if on Streamlit Cloud) or run `pip install stmol py3Dmol` on your computer.")
 
     st.write("")
     st.markdown('<p class="section-header">2. Secondary Systems & Complexes</p>', unsafe_allow_html=True)
@@ -1133,4 +1177,87 @@ elif st.session_state.app_mode == "Structural Analysis":
             if m2_file:
                 m2_file.seek(0)
                 m2_content = m2_file.read().decode('utf-8')
-                row_data_m2 = {"System
+                row_data_m2 = {"System": m2_name}
+                for bd in comp["m2_bonds"]:
+                    if bd["name"] and bd["atoms_str"]:
+                        dist, freq = process_bond(m2_content, bd["name"], bd["atoms_str"], m2_file.name)
+                        row_data_m2[bd["name"]] = {"dist": dist, "freq": freq}
+                extracted_rows.append(row_data_m2)
+                
+            if c_file and comp["c_m2_bonds"]:
+                row_data_c_solv = {"System": f"{m2_name} ({c_name})"}
+                has_m2_bonds = False
+                for bd in comp["c_m2_bonds"]:
+                    if bd["name"] and bd["atoms_str"]:
+                        has_m2_bonds = True
+                        dist, freq = process_bond(c_content, bd["name"], bd["atoms_str"], c_file.name)
+                        row_data_c_solv[bd["name"]] = {"dist": dist, "freq": freq}
+                if has_m2_bonds: extracted_rows.append(row_data_c_solv)
+
+        if not extracted_rows:
+            st.error("No valid data could be extracted.")
+            st.stop()
+            
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Frequencies')
+        header_format = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
+        center_format = workbook.add_format({'align': 'center', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
+        left_format = workbook.add_format({'align': 'left', 'valign': 'vcenter', 'border': 1, 'font_name': 'Times New Roman', 'font_size': 12})
+        
+        columns = ["System"]
+        for b_name in all_bond_names:
+            columns.extend([f"Bond Length (A) {b_name}", f"{b_name} Freq"])
+            if scaling_factor is not None:
+                columns.append(f"Scaled {b_name}")
+            
+        worksheet.set_row(0, 20)
+        for col_num, header in enumerate(columns): worksheet.write(0, col_num, header, header_format)
+        worksheet.set_column('A:A', 30, left_format)
+        if len(columns) > 1: worksheet.set_column(1, len(columns)-1, 20, center_format)
+        
+        for row_num, row_dict in enumerate(extracted_rows, start=1):
+            worksheet.set_row(row_num, 20)
+            worksheet.write(row_num, 0, row_dict.get("System", ""), left_format)
+            
+            col_idx = 1
+            for b_name in all_bond_names:
+                b_data = row_dict.get(b_name, {})
+                dist = b_data.get("dist")
+                freq = b_data.get("freq")
+                
+                worksheet.write(row_num, col_idx, float(dist) if dist else "", center_format)
+                worksheet.write(row_num, col_idx+1, float(freq) if freq else "", center_format)
+                
+                if scaling_factor is not None:
+                    worksheet.write(row_num, col_idx+2, float(freq * scaling_factor) if freq else "", center_format)
+                    col_idx += 3
+                else:
+                    col_idx += 2
+                
+        workbook.close()
+        
+        st.session_state.extracted_rows_struct = extracted_rows
+        st.session_state.bond_names_struct = all_bond_names
+        st.session_state.excel_data_struct = output.getvalue()
+        st.session_state.applied_scaling_factor = scaling_factor 
+        st.session_state.calc_done_struct = True
+        st.rerun()
+
+    if st.session_state.calc_done_struct:
+        for w in st.session_state.warnings_struct: st.warning(w)
+        st.markdown('<p class="section-header" style="text-align: center; border: none;">Tabulated Results</p>', unsafe_allow_html=True)
+        
+        df_data = []
+        for row in st.session_state.extracted_rows_struct:
+            flat_row = {"System": row["System"]}
+            for b_name in st.session_state.bond_names_struct:
+                b_data = row.get(b_name, {})
+                flat_row[f"Bond Length (A) {b_name}"] = b_data.get("dist")
+                flat_row[f"{b_name} Freq"] = b_data.get("freq")
+                if st.session_state.applied_scaling_factor is not None:
+                    flat_row[f"Scaled {b_name}"] = b_data.get("freq") * st.session_state.applied_scaling_factor if b_data.get("freq") else None
+            df_data.append(flat_row)
+            
+        display_df = pd.DataFrame(df_data)
+        st.dataframe(display_df.style.format(precision=4), use_container_width=True)
